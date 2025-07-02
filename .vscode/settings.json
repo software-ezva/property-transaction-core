@@ -1,3 +1,9 @@
 {
-  "conventionalCommits.scopes": ["dependencies", "devDependencies", "test"]
+  "conventionalCommits.scopes": [
+    "dependencies",
+    "devDependencies",
+    "test",
+    "controllers",
+    "auth"
+  ]
 }
