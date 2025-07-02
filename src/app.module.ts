@@ -5,6 +5,8 @@ import { UsersModule } from './users/users.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { TemplatesModule } from './templates/templates.module';
 import { ConfigModule } from '@nestjs/config';
+import { PropertiesModule } from './properties/properties.module';
+import { AuthzModule } from './authz/authz.module';
 
 @Module({
   imports: [
@@ -21,12 +23,15 @@ import { ConfigModule } from '@nestjs/config';
       database: process.env.DB_DATABASE,
       entities: [],
       synchronize: true,
+      logging: true,
       // TODO:Setting synchronize: true shouldn't be used in production - otherwise you can lose production data.
       autoLoadEntities: true,
     }),
     UsersModule,
     TransactionsModule,
     TemplatesModule,
+    PropertiesModule,
+    AuthzModule,
   ],
 })
 export class AppModule {
