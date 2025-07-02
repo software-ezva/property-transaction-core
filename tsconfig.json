@@ -20,6 +20,6 @@
     "allowJs": true,
     "checkJs": false
   },
-  "include": ["src/**/*", "features/**/*.js"],
+  "include": ["src/**/*", "features/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
