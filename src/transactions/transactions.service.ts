@@ -36,7 +36,8 @@ export class TransactionsService {
     createTransactionDto: CreateTransactionDto,
   ): Promise<Transaction> {
     try {
-      const { propertyId, agentId } = createTransactionDto;
+      const { propertyId, agentId, clientId, transactionType } =
+        createTransactionDto;
 
       // Fetch property and agent entities
       const property = await this.propertyRepository.findOne({
@@ -58,9 +59,34 @@ export class TransactionsService {
         throw new NotFoundException(`User with ID ${agentId} not found`);
       }
 
-      // Use existing business logic
+      // Optionally fetch client if clientId is provided
+      let client: User | null = null;
+      if (clientId) {
+        client = await this.userRepository.findOne({
+          where: { id: clientId },
+          relations: ['profile'],
+        });
+
+        if (!client) {
+          this.logger.warn(`Client with ID ${clientId} not found`);
+          throw new NotFoundException(`Client with ID ${clientId} not found`);
+        }
+      }
+
+      // Create transaction using existing business logic
       const transaction = await this.createTransaction(property, agent);
-      return transaction;
+
+      // Assign workflow template based on transaction type
+      const result = await this.chooseWorkflowTemplate(
+        transactionType,
+        transaction,
+      );
+
+      this.logger.log(
+        `Transaction created successfully with ID: ${result.transaction.transactionId} and workflow assigned`,
+      );
+
+      return result.transaction;
     } catch (error) {
       this.logger.error(
         `Failed to create transaction for property ID: ${createTransactionDto.propertyId}`,

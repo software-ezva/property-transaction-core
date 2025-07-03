@@ -28,7 +28,6 @@ import { TransactionsService } from './transactions.service';
 import { TemplatesService } from '../templates/templates.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { AssignWorkflowDto } from './dto/assign-workflow.dto';
 import { TransactionType } from '../common/enums';
 import { AuthGuard } from '@nestjs/passport';
 
@@ -48,18 +47,18 @@ export class TransactionsController {
   @ApiOperation({
     summary: 'Create a new transaction',
     description:
-      'Creates a new property transaction with the provided details.',
+      'Creates a new property transaction with the provided details and assigns a workflow template based on the transaction type.',
   })
   @ApiBody({
     type: CreateTransactionDto,
-    description: 'Transaction information to create',
+    description: 'Transaction information to create including transaction type',
   })
   @ApiResponse({
     status: 201,
-    description: 'Transaction created successfully',
+    description: 'Transaction created successfully with workflow assigned',
   })
   @ApiBadRequestResponse({
-    description: 'Invalid transaction data provided',
+    description: 'Invalid transaction data or transaction type provided',
   })
   @ApiUnauthorizedResponse({
     description: 'Authentication required',
@@ -69,6 +68,20 @@ export class TransactionsController {
   })
   async create(@Body() createTransactionDto: CreateTransactionDto) {
     try {
+      // Validate transaction type
+      if (
+        !Object.values(TransactionType).includes(
+          createTransactionDto.transactionType,
+        )
+      ) {
+        this.logger.warn(
+          `Invalid transaction type provided: ${createTransactionDto.transactionType}`,
+        );
+        throw new BadRequestException(
+          `Invalid transaction type. Valid types are: ${Object.values(TransactionType).join(', ')}`,
+        );
+      }
+
       const result =
         await this.transactionsService.create(createTransactionDto);
       return result;
@@ -77,6 +90,9 @@ export class TransactionsController {
         'Failed to create transaction',
         error instanceof Error ? error.stack : String(error),
       );
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       throw new HttpException(
         'Internal server error during transaction creation',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -299,92 +315,6 @@ export class TransactionsController {
       }
       throw new HttpException(
         'Internal server error during transaction deletion',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Post(':id/choose-workflow')
-  @ApiOperation({
-    summary: 'Assign workflow template to transaction',
-    description:
-      'Assigns a workflow template to a transaction based on the transaction type.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Transaction ID',
-    type: 'string',
-  })
-  @ApiBody({
-    type: AssignWorkflowDto,
-    description: 'Workflow assignment information',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Workflow template assigned successfully',
-  })
-  @ApiBadRequestResponse({
-    description: 'Invalid transaction type or transaction ID',
-  })
-  @ApiNotFoundResponse({
-    description: 'Transaction not found',
-  })
-  @ApiInternalServerErrorResponse({
-    description: 'Internal server error during workflow assignment',
-  })
-  async chooseWorkflowTemplate(
-    @Param('id') transactionId: string,
-    @Body() assignWorkflowDto: AssignWorkflowDto,
-  ) {
-    this.logger.log(
-      `Assigning workflow template to transaction ID: ${transactionId}`,
-    );
-
-    try {
-      const { transactionType } = assignWorkflowDto;
-
-      // Validar que el transactionType sea válido
-      if (!Object.values(TransactionType).includes(transactionType)) {
-        this.logger.warn(
-          `Invalid transaction type provided: ${transactionType}`,
-        );
-        throw new BadRequestException(
-          `Invalid transaction type. Valid types are: ${Object.values(TransactionType).join(', ')}`,
-        );
-      }
-
-      // Buscar la transacción
-      const transaction =
-        await this.transactionsService.findOneEntity(transactionId);
-
-      if (!transaction) {
-        this.logger.warn(`Transaction not found: ${transactionId}`);
-        throw new HttpException('Transaction not found', HttpStatus.NOT_FOUND);
-      }
-
-      // Asignar el workflow template
-      const result = await this.transactionsService.chooseWorkflowTemplate(
-        transactionType,
-        transaction,
-      );
-
-      this.logger.log(
-        `Workflow template assigned successfully to transaction ID: ${transactionId}`,
-      );
-      return result;
-    } catch (error) {
-      this.logger.error(
-        `Failed to assign workflow template to transaction: ${transactionId}`,
-        error instanceof Error ? error.stack : String(error),
-      );
-      if (
-        error instanceof HttpException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
-      }
-      throw new HttpException(
-        'Internal server error during workflow assignment',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
