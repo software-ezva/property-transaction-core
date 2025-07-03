@@ -21,78 +21,99 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+# property-transaction-core
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Backend system for real estate transaction management, built with NestJS, TypeORM, and Auth0.
 
-## Project setup
+---
 
-```bash
-$ npm install
+## Table of Contents
+
+- [Overview](#overview)
+- [Project Structure](#project-structure)
+- [Main Modules](#main-modules)
+- [Best Practices](#best-practices)
+- [Setup & Run](#setup--run)
+- [Swagger & API Docs](#swagger--api-docs)
+- [Testing](#testing)
+- [Integrations](#integrations)
+- [Support](#support)
+
+---
+
+## Overview
+
+This project implements the business core for managing properties, users, workflow templates, and real estate transactions, focusing on traceability, compliance, and process automation.
+
+## Project Structure
+
+```
+├── src/
+│   ├── app.module.ts
+│   ├── main.ts
+│   ├── properties/
+│   ├── templates/
+│   ├── transactions/
+│   ├── users/
+│   └── common/
+├── features/           # BDD tests (Cucumber)
+├── test/               # Unit/e2e tests
+├── .env                # Environment variables
+├── package.json
+└── README.md
 ```
 
-## Compile and run the project
+## Main Modules
 
-```bash
-# development
-$ npm run start
+- **Users & Profiles**: Auth0 integration, agent and client profiles.
+- **Properties**: Full CRUD for real estate properties.
+- **Templates**: Management of reusable workflows/checklists.
+- **Transactions**: Complete lifecycle of real estate transactions.
 
-# watch mode
-$ npm run start:dev
+## Best Practices
 
-# production mode
-$ npm run start:prod
-```
+- **Swagger**: Comprehensive endpoint documentation.
+- **Structured Logger**: Only essential logs (errors, warnings, critical operations like DELETE).
+- **Error Handling**: Custom exceptions and HttpException.
+- **Validation**: DTOs and class-validator.
+- **Modularity**: Clear separation by domain.
 
-## Run tests
+## Setup & Run
 
-```bash
-# unit tests
-$ npm run test
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Configure the `.env` file with your database and Auth0 credentials.
+3. Run the project:
+   ```bash
+   npm run start:dev
+   ```
 
-# e2e tests
-$ npm run test:e2e
+## Swagger & API Docs
 
-# test coverage
-$ npm run test:cov
-```
+- Access interactive documentation at `/api` after starting the server.
+- All endpoints are documented with request/response, errors, and descriptions.
 
-## Deployment
+## Testing
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- Unit: `npm run test`
+- End-to-end: `npm run test:e2e`
+- BDD (Cucumber): `npm run test:cucumber`
+- Coverage: `npm run test:cov`
+- See `TEST-README.md` for details.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Integrations
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- **Auth0**: JWT authentication and authorization.
+- **TypeORM**: Relational database ORM.
+- **Cucumber**: BDD testing.
+- **Swagger**: Public API and interactive docs.
 
 ## Support
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+For technical questions, see this README, `TEST-README.md`, and `BRSG-README.md` for business details.
 
-## Stay in touch
+---
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+© property-transaction-core 2025

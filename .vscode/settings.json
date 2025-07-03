@@ -4,6 +4,7 @@
     "devDependencies",
     "test",
     "controllers",
-    "auth"
+    "auth",
+    "docs"
   ]
 }
