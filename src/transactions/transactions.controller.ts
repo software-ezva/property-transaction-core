@@ -11,6 +11,8 @@ import {
   Logger,
   HttpException,
   HttpStatus,
+  Request,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -26,10 +28,15 @@ import {
 } from '@nestjs/swagger';
 import { TransactionsService } from './transactions.service';
 import { TemplatesService } from '../templates/templates.service';
+import { UsersService } from '../users/users.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { TransactionType } from '../common/enums';
 import { AuthGuard } from '@nestjs/passport';
+import { AuthenticatedRequest } from '../common/interfaces';
+import {
+  InvalidTransactionDataException,
+  DuplicateTransactionException,
+} from '../common/exceptions';
 
 @Controller('transactions')
 @ApiTags('transactions')
@@ -39,6 +46,7 @@ export class TransactionsController {
   constructor(
     private readonly transactionsService: TransactionsService,
     private readonly templatesService: TemplatesService,
+    private readonly usersService: UsersService,
   ) {}
 
   @UseGuards(AuthGuard('jwt'))
@@ -47,52 +55,86 @@ export class TransactionsController {
   @ApiOperation({
     summary: 'Create a new transaction',
     description:
-      'Creates a new property transaction with the provided details and assigns a workflow template based on the transaction type.',
+      'Creates a new property transaction with the provided details and optional additional notes. The agent is automatically determined from the authenticated user (JWT token). Assigns a workflow template based on the transaction type.',
   })
   @ApiBody({
     type: CreateTransactionDto,
-    description: 'Transaction information to create including transaction type',
+    description:
+      'Transaction information including property ID, optional client ID, transaction type, and optional notes. The agent is automatically extracted from the authentication token.',
   })
   @ApiResponse({
     status: 201,
     description: 'Transaction created successfully with workflow assigned',
   })
   @ApiBadRequestResponse({
-    description: 'Invalid transaction data or transaction type provided',
+    description:
+      'Invalid transaction data, transaction type, or validation errors',
+  })
+  @ApiNotFoundResponse({
+    description: 'Property not found or agent not registered in the system',
   })
   @ApiUnauthorizedResponse({
-    description: 'Authentication required',
+    description: 'Authentication required or invalid JWT token',
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during transaction creation',
   })
-  async create(@Body() createTransactionDto: CreateTransactionDto) {
+  async create(
+    @Body() createTransactionDto: CreateTransactionDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     try {
-      // Validate transaction type
-      if (
-        !Object.values(TransactionType).includes(
-          createTransactionDto.transactionType,
-        )
-      ) {
-        this.logger.warn(
-          `Invalid transaction type provided: ${createTransactionDto.transactionType}`,
-        );
-        throw new BadRequestException(
-          `Invalid transaction type. Valid types are: ${Object.values(TransactionType).join(', ')}`,
+      // Extract agent from JWT token
+      const auth0User = req.user;
+      if (!auth0User || !auth0User.sub) {
+        this.logger.error('No authenticated user found in request');
+        throw new HttpException(
+          'Authentication required',
+          HttpStatus.UNAUTHORIZED,
         );
       }
 
-      const result =
-        await this.transactionsService.create(createTransactionDto);
+      // Find the agent user by Auth0 ID
+      const agent = await this.usersService.findByAuth0Id(auth0User.sub);
+      if (!agent) {
+        this.logger.warn(
+          `Agent with Auth0 ID ${auth0User.sub} not found in database`,
+        );
+        throw new NotFoundException(
+          'Agent not found. Please ensure your account is properly registered.',
+        );
+      }
+
+      const result = await this.transactionsService.create(
+        createTransactionDto,
+        agent,
+      );
       return result;
     } catch (error) {
       this.logger.error(
         'Failed to create transaction',
         error instanceof Error ? error.stack : String(error),
       );
-      if (error instanceof BadRequestException) {
+
+      // Handle domain exceptions
+      if (error instanceof InvalidTransactionDataException) {
+        throw new BadRequestException(error.message);
+      }
+
+      if (error instanceof DuplicateTransactionException) {
+        throw new BadRequestException(error.message);
+      }
+
+      // Handle NestJS exceptions
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof HttpException
+      ) {
         throw error;
       }
+
+      // Handle unexpected errors
       throw new HttpException(
         'Internal server error during transaction creation',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -281,6 +323,16 @@ export class TransactionsController {
   @ApiResponse({
     status: 200,
     description: 'Transaction deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: {
+          type: 'string',
+          example: 'Transaction 123 and all related data deleted successfully',
+        },
+      },
+    },
   })
   @ApiNotFoundResponse({
     description: 'Transaction not found',
@@ -291,7 +343,7 @@ export class TransactionsController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during transaction deletion',
   })
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string) {
     this.logger.log(`Deleting transaction with ID: ${id}`);
 
     try {
@@ -303,7 +355,7 @@ export class TransactionsController {
         );
       }
 
-      const result = this.transactionsService.remove(transactionId);
+      const result = await this.transactionsService.remove(transactionId);
       return result;
     } catch (error) {
       this.logger.error(

@@ -7,11 +7,13 @@ import { User } from '../users/entities/user.entity';
 import { Property } from '../properties/entities/property.entity';
 import { WorkflowTemplate } from '../templates/entities/workflow-template.entity';
 import { TemplatesModule } from '../templates/templates.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Transaction, User, Property, WorkflowTemplate]),
     TemplatesModule,
+    UsersModule,
   ],
   controllers: [TransactionsController],
   providers: [TransactionsService],
