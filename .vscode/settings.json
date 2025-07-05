@@ -5,6 +5,7 @@
     "test",
     "controllers",
     "auth",
-    "docs"
+    "docs",
+    "endpoints"
   ]
 }

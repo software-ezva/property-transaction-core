@@ -9,7 +9,9 @@ import {
   Logger,
   HttpException,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import {
   ApiTags,
   ApiOperation,
@@ -19,12 +21,21 @@ import {
   ApiBadRequestResponse,
   ApiNotFoundResponse,
   ApiInternalServerErrorResponse,
+  ApiBearerAuth,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { PropertiesService } from './properties.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
+import { PropertyResponseDto } from './dto/property-response.dto';
 
 @Controller('properties')
+@ApiTags('properties')
+@UseGuards(AuthGuard('jwt'))
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({
+  description: 'User not authenticated or authorization failed',
+})
 @ApiTags('properties')
 export class PropertiesController {
   private readonly logger = new Logger(PropertiesController.name);
@@ -43,6 +54,7 @@ export class PropertiesController {
   @ApiResponse({
     status: 201,
     description: 'Property created successfully',
+    type: PropertyResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid property data provided',
@@ -50,9 +62,11 @@ export class PropertiesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during property creation',
   })
-  create(@Body() createPropertyDto: CreatePropertyDto) {
+  async create(
+    @Body() createPropertyDto: CreatePropertyDto,
+  ): Promise<PropertyResponseDto> {
     try {
-      const result = this.propertiesService.create(createPropertyDto);
+      const result = await this.propertiesService.create(createPropertyDto);
       return result;
     } catch (error) {
       this.logger.error(
@@ -74,13 +88,14 @@ export class PropertiesController {
   @ApiResponse({
     status: 200,
     description: 'Properties retrieved successfully',
+    type: [PropertyResponseDto],
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during properties retrieval',
   })
-  findAll() {
+  async findAll(): Promise<PropertyResponseDto[]> {
     try {
-      const result = this.propertiesService.findAll();
+      const result = await this.propertiesService.findAll();
       return result;
     } catch (error) {
       this.logger.error(
@@ -107,6 +122,7 @@ export class PropertiesController {
   @ApiResponse({
     status: 200,
     description: 'Property retrieved successfully',
+    type: PropertyResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'Property not found',
@@ -117,14 +133,14 @@ export class PropertiesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during property retrieval',
   })
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string): Promise<PropertyResponseDto> {
     try {
       const propertyId = +id;
       if (isNaN(propertyId)) {
         throw new HttpException('Invalid property ID', HttpStatus.BAD_REQUEST);
       }
 
-      const result = this.propertiesService.findOne(propertyId);
+      const result = await this.propertiesService.findOne(propertyId);
       return result;
     } catch (error) {
       this.logger.error(
@@ -158,6 +174,7 @@ export class PropertiesController {
   @ApiResponse({
     status: 200,
     description: 'Property updated successfully',
+    type: PropertyResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'Property not found',
@@ -168,17 +185,17 @@ export class PropertiesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during property update',
   })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updatePropertyDto: UpdatePropertyDto,
-  ) {
+  ): Promise<PropertyResponseDto> {
     try {
       const propertyId = +id;
       if (isNaN(propertyId)) {
         throw new HttpException('Invalid property ID', HttpStatus.BAD_REQUEST);
       }
 
-      const result = this.propertiesService.update(
+      const result = await this.propertiesService.update(
         propertyId,
         updatePropertyDto,
       );
@@ -221,16 +238,15 @@ export class PropertiesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during property deletion',
   })
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string): Promise<void> {
     try {
       const propertyId = +id;
       if (isNaN(propertyId)) {
         throw new HttpException('Invalid property ID', HttpStatus.BAD_REQUEST);
       }
 
-      const result = this.propertiesService.remove(propertyId);
+      await this.propertiesService.remove(propertyId);
       this.logger.log(`Property deleted: ${id}`); // Solo para operaciones críticas como DELETE
-      return result;
     } catch (error) {
       this.logger.error(
         `Failed to delete property with ID: ${id}`,

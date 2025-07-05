@@ -1,64 +1,58 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsNotEmpty,
-  IsString,
-  IsNumber,
-  IsOptional,
-  IsPositive,
-  Min,
-} from 'class-validator';
 
-export class CreatePropertyDto {
+export class PropertyResponseDto {
+  @ApiProperty({
+    description: 'Property ID',
+    example: 1,
+  })
+  id: number;
+
   @ApiProperty({
     description: 'Property address',
     example: '123 Main Street, City, State 12345',
   })
-  @IsNotEmpty()
-  @IsString()
   address: string;
 
   @ApiProperty({
     description: 'Property price',
     example: 250000,
   })
-  @IsNotEmpty()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive()
   price: number;
 
   @ApiProperty({
     description: 'Property size in square feet',
     example: 1500,
   })
-  @IsNotEmpty()
-  @IsNumber()
-  @IsPositive()
   size: number;
 
   @ApiProperty({
     description: 'Number of bedrooms',
     example: 3,
   })
-  @IsNotEmpty()
-  @IsNumber()
-  @Min(0)
   bedrooms: number;
 
   @ApiProperty({
     description: 'Number of bathrooms',
     example: 2,
   })
-  @IsNotEmpty()
-  @IsNumber()
-  @Min(0)
   bathrooms: number;
 
   @ApiProperty({
     description: 'Property description',
     example: 'Beautiful family home with modern amenities',
-    required: false,
+    nullable: true,
   })
-  @IsOptional()
-  @IsString()
-  description?: string;
+  description: string;
+
+  @ApiProperty({
+    description: 'Date when the property was created',
+    example: '2025-07-04T15:30:00.000Z',
+  })
+  createdAt: Date;
+
+  @ApiProperty({
+    description: 'Date when the property was last updated',
+    example: '2025-07-04T15:30:00.000Z',
+  })
+  updatedAt: Date;
 }
