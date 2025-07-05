@@ -25,6 +25,9 @@ export class Transaction {
   @Column({ type: 'varchar', length: 50, default: 'active' })
   status: string;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  additionalNotes?: string;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
@@ -44,14 +47,15 @@ export class Transaction {
   agent: User;
 
   @ManyToOne(() => User, (user) => user.clientTransactions, {
-    nullable: false,
+    nullable: true,
   })
   @JoinColumn({ name: 'clientId' })
-  client: User;
+  client?: User;
 
   @OneToOne(() => Workflow, (workflow) => workflow.transaction, {
-    cascade: true,
+    cascade: ['insert', 'update', 'remove'],
     nullable: true,
+    onDelete: 'CASCADE',
   })
   workflow: Workflow;
 }

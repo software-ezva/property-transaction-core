@@ -29,7 +29,8 @@ export class Workflow {
   transaction: Transaction;
 
   @OneToMany(() => Checklist, (checklist) => checklist.workflow, {
-    cascade: true,
+    cascade: ['insert', 'update', 'remove'],
+    onDelete: 'CASCADE',
   })
   checklists: Checklist[];
 

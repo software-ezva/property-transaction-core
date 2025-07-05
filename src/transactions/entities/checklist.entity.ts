@@ -31,7 +31,10 @@ export class Checklist {
   @JoinColumn({ name: 'workflowId' })
   workflow: Workflow;
 
-  @OneToMany(() => Item, (item) => item.checklist, { cascade: true })
+  @OneToMany(() => Item, (item) => item.checklist, {
+    cascade: ['insert', 'update', 'remove'],
+    onDelete: 'CASCADE',
+  })
   items: Item[];
 
   // Métodos de utilidad
