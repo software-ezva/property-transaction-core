@@ -117,4 +117,48 @@ export class ProfilesService {
       throw error;
     }
   }
+
+  async getAllClients(): Promise<Partial<User>[]> {
+    try {
+      const clients = await this.userRepository
+        .createQueryBuilder('user')
+        .select(['user.id', 'user.firstName', 'user.lastName', 'user.email'])
+        .innerJoin('user.profile', 'profile')
+        .where('profile.profileType = :profileType', {
+          profileType: ProfileType.CLIENT,
+        })
+        .getMany();
+
+      this.logger.log(`Found ${clients.length} clients`);
+      return clients;
+    } catch (error) {
+      this.logger.error(
+        'Failed to retrieve clients',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw error;
+    }
+  }
+
+  async getAllAgents(): Promise<Partial<User>[]> {
+    try {
+      const agents = await this.userRepository
+        .createQueryBuilder('user')
+        .select(['user.id', 'user.firstName', 'user.lastName', 'user.email'])
+        .innerJoin('user.profile', 'profile')
+        .where('profile.profileType = :profileType', {
+          profileType: ProfileType.REAL_ESTATE_AGENT,
+        })
+        .getMany();
+
+      this.logger.log(`Found ${agents.length} agents`);
+      return agents;
+    } catch (error) {
+      this.logger.error(
+        'Failed to retrieve agents',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw error;
+    }
+  }
 }

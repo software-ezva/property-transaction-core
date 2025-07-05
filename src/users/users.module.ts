@@ -6,8 +6,9 @@ import { User } from './entities/user.entity';
 import { Profile } from './entities/profile.entity';
 import { RealEstateAgentProfile } from './entities/real-estate-agent-profile.entity';
 import { ClientProfile } from './entities/client-profile.entity';
-import { ProfilesController } from './profiles.controller';
 import { ProfilesService } from './profiles.service';
+import { ClientsController } from './clients.controller';
+import { AgentsController } from './agents.controller';
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { ProfilesService } from './profiles.service';
       ClientProfile,
     ]),
   ],
-  controllers: [UsersController, ProfilesController],
+  controllers: [UsersController, ClientsController, AgentsController],
   providers: [UsersService, ProfilesService],
+  exports: [ProfilesService, UsersService, TypeOrmModule],
 })
 export class UsersModule {}

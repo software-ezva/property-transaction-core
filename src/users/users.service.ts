@@ -76,6 +76,14 @@ export class UsersService {
     return new SyncUserResponseDto(user, isNewUser);
   }
 
+  // Find user by Auth0 ID
+  async findByAuth0Id(auth0Id: string): Promise<User | null> {
+    return await this.userRepository.findOne({
+      where: { auth0Id },
+      relations: ['profile'],
+    });
+  }
+
   // // ...existing code...
   // create(createUserDto: CreateUserDto) {
   //   return 'This action adds a new user';
