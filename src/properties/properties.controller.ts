@@ -28,6 +28,7 @@ import { PropertiesService } from './properties.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
 import { PropertyResponseDto } from './dto/property-response.dto';
+import { PropertyNotFoundException } from '../common/exceptions';
 
 @Controller('properties')
 @ApiTags('properties')
@@ -147,9 +148,16 @@ export class PropertiesController {
         `Failed to retrieve property with ID: ${id}`,
         error instanceof Error ? error.stack : String(error),
       );
+
+      // Handle domain exceptions
+      if (error instanceof PropertyNotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+
       if (error instanceof HttpException) {
         throw error;
       }
+
       throw new HttpException(
         'Internal server error during property retrieval',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -205,9 +213,16 @@ export class PropertiesController {
         `Failed to update property with ID: ${id}`,
         error instanceof Error ? error.stack : String(error),
       );
+
+      // Handle domain exceptions
+      if (error instanceof PropertyNotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+
       if (error instanceof HttpException) {
         throw error;
       }
+
       throw new HttpException(
         'Internal server error during property update',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -252,9 +267,16 @@ export class PropertiesController {
         `Failed to delete property with ID: ${id}`,
         error instanceof Error ? error.stack : String(error),
       );
+
+      // Handle domain exceptions
+      if (error instanceof PropertyNotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+
       if (error instanceof HttpException) {
         throw error;
       }
+
       throw new HttpException(
         'Internal server error during property deletion',
         HttpStatus.INTERNAL_SERVER_ERROR,

@@ -43,11 +43,6 @@ export class TransactionsService {
   ): Promise<Transaction> {
     const { propertyId, clientId, transactionType, additionalNotes } =
       createTransactionDto;
-
-    this.logger.log(
-      `Creating transaction for property ${propertyId}, agent ${agent.id}, type ${transactionType}`,
-    );
-
     try {
       // Validate input parameters
       this.validateCreateInput(agent, propertyId, clientId);
@@ -121,7 +116,7 @@ export class TransactionsService {
 
       if (!transaction) {
         this.logger.warn(`Transaction with ID ${id} not found`);
-        throw new NotFoundException(`Transaction with ID ${id} not found`);
+        throw new TransactionNotFoundException(id);
       }
 
       this.logger.log(`Transaction with ID ${id} retrieved successfully`);
@@ -177,7 +172,7 @@ export class TransactionsService {
 
       if (!transaction) {
         this.logger.warn(`Transaction with ID ${id} not found`);
-        throw new NotFoundException(`Transaction with ID ${id} not found`);
+        throw new TransactionNotFoundException(id);
       }
 
       // Remove the transaction (CASCADE will handle workflow, checklists, and items)
@@ -197,7 +192,7 @@ export class TransactionsService {
         error instanceof Error ? error.stack : String(error),
       );
 
-      if (error instanceof NotFoundException) {
+      if (error instanceof TransactionNotFoundException) {
         throw error;
       }
 
@@ -352,7 +347,7 @@ export class TransactionsService {
 
     if (!property) {
       this.logger.warn(`Property with ID ${propertyId} not found`);
-      throw new NotFoundException(`Property with ID ${propertyId} not found`);
+      throw new PropertyNotFoundException(propertyId);
     }
 
     return property;
@@ -366,7 +361,7 @@ export class TransactionsService {
 
     if (!client) {
       this.logger.warn(`Client with ID ${clientId} not found`);
-      throw new NotFoundException(`Client with ID ${clientId} not found`);
+      throw new UserNotFoundException(clientId);
     }
 
     return client;

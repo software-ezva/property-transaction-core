@@ -36,6 +36,9 @@ import { AuthenticatedRequest } from '../common/interfaces';
 import {
   InvalidTransactionDataException,
   DuplicateTransactionException,
+  PropertyNotFoundException,
+  UserNotFoundException,
+  TransactionNotFoundException,
 } from '../common/exceptions';
 
 @Controller('transactions')
@@ -123,6 +126,18 @@ export class TransactionsController {
 
       if (error instanceof DuplicateTransactionException) {
         throw new BadRequestException(error.message);
+      }
+
+      if (error instanceof PropertyNotFoundException) {
+        throw new NotFoundException(error.message);
+      }
+
+      if (error instanceof UserNotFoundException) {
+        throw new NotFoundException(error.message);
+      }
+
+      if (error instanceof TransactionNotFoundException) {
+        throw new NotFoundException(error.message);
       }
 
       // Handle NestJS exceptions
