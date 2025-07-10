@@ -6,6 +6,7 @@
     "controllers",
     "auth",
     "docs",
-    "endpoints"
+    "endpoints",
+    "features"
   ]
 }
