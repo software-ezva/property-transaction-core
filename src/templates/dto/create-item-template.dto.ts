@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateItemTemplateDto {
   @ApiProperty({
@@ -20,8 +20,8 @@ export class CreateItemTemplateDto {
 
   @ApiProperty({
     description: 'ID of the checklist template this item belongs to',
-    example: 1,
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   })
-  @IsNumber()
-  checklistTemplateId: number;
+  @IsUUID(4)
+  checklistTemplateId: string;
 }

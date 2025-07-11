@@ -3,8 +3,8 @@ import { Transaction } from '../../transactions/entities/transaction.entity';
 
 @Entity('properties')
 export class Property {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 255 })
   address: string;

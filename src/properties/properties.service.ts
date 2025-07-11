@@ -72,7 +72,7 @@ export class PropertiesService {
     }
   }
 
-  async findOne(id: number): Promise<PropertyResponseDto> {
+  async findOne(id: string): Promise<PropertyResponseDto> {
     this.logger.log(`Retrieving property with ID: ${id}`);
 
     try {
@@ -96,7 +96,7 @@ export class PropertiesService {
   }
 
   async update(
-    id: number,
+    id: string,
     updatePropertyDto: UpdatePropertyDto,
   ): Promise<PropertyResponseDto> {
     this.logger.log(`Updating property with ID: ${id}`);
@@ -126,7 +126,7 @@ export class PropertiesService {
     }
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     this.logger.log(`Removing property with ID: ${id}`);
 
     try {

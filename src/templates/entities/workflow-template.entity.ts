@@ -4,8 +4,8 @@ import { TransactionType } from '../../common/enums';
 
 @Entity('workflow_templates')
 export class WorkflowTemplate {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({
     type: 'enum',

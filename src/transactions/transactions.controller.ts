@@ -68,6 +68,19 @@ export class TransactionsController {
   @ApiResponse({
     status: 201,
     description: 'Transaction created successfully with workflow assigned',
+    schema: {
+      type: 'object',
+      properties: {
+        transactionId: {
+          type: 'string',
+          example: '550e8400-e29b-41d4-a716-446655440000',
+        },
+        message: {
+          type: 'string',
+          example: 'Transaction created successfully',
+        },
+      },
+    },
   })
   @ApiBadRequestResponse({
     description:
@@ -108,11 +121,16 @@ export class TransactionsController {
         );
       }
 
-      const result = await this.transactionsService.create(
+      const transaction = await this.transactionsService.create(
         createTransactionDto,
         agent,
       );
-      return result;
+      
+      // Return only the transaction ID
+      return {
+        transactionId: transaction.transactionId,
+        message: 'Transaction created successfully',
+      };
     } catch (error) {
       this.logger.error(
         'Failed to create transaction',
@@ -219,7 +237,7 @@ export class TransactionsController {
   @ApiParam({
     name: 'id',
     description: 'Transaction ID',
-    type: 'number',
+    type: 'string',
   })
   @ApiResponse({
     status: 200,
@@ -236,15 +254,14 @@ export class TransactionsController {
   })
   findOne(@Param('id') id: string) {
     try {
-      const transactionId = +id;
-      if (isNaN(transactionId)) {
+      if (!id || !id.trim()) {
         throw new HttpException(
           'Invalid transaction ID',
           HttpStatus.BAD_REQUEST,
         );
       }
 
-      const result = this.transactionsService.findOne(transactionId);
+      const result = this.transactionsService.findOne(id);
       this.logger.log(`Transaction with ID ${id} retrieved successfully`);
       return result;
     } catch (error) {
@@ -271,7 +288,7 @@ export class TransactionsController {
   @ApiParam({
     name: 'id',
     description: 'Transaction ID',
-    type: 'number',
+    type: 'string',
   })
   @ApiBody({
     type: UpdateTransactionDto,
@@ -297,18 +314,14 @@ export class TransactionsController {
     this.logger.log(`Updating transaction with ID: ${id}`);
 
     try {
-      const transactionId = +id;
-      if (isNaN(transactionId)) {
+      if (!id || !id.trim()) {
         throw new HttpException(
           'Invalid transaction ID',
           HttpStatus.BAD_REQUEST,
         );
       }
 
-      const result = this.transactionsService.update(
-        transactionId,
-        updateTransactionDto,
-      );
+      const result = this.transactionsService.update(id, updateTransactionDto);
       return result;
     } catch (error) {
       this.logger.error(
@@ -333,7 +346,7 @@ export class TransactionsController {
   @ApiParam({
     name: 'id',
     description: 'Transaction ID',
-    type: 'number',
+    type: 'string',
   })
   @ApiResponse({
     status: 200,
@@ -362,15 +375,14 @@ export class TransactionsController {
     this.logger.log(`Deleting transaction with ID: ${id}`);
 
     try {
-      const transactionId = +id;
-      if (isNaN(transactionId)) {
+      if (!id || !id.trim()) {
         throw new HttpException(
           'Invalid transaction ID',
           HttpStatus.BAD_REQUEST,
         );
       }
 
-      const result = await this.transactionsService.remove(transactionId);
+      const result = await this.transactionsService.remove(id);
       return result;
     } catch (error) {
       this.logger.error(

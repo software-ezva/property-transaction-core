@@ -13,8 +13,8 @@ import { TransactionType } from '../../common/enums';
 
 @Entity('transactions')
 export class Transaction {
-  @PrimaryGeneratedColumn()
-  transactionId: number;
+  @PrimaryGeneratedColumn('uuid')
+  transactionId: string;
   @Column({
     type: 'enum',
     enum: TransactionType,

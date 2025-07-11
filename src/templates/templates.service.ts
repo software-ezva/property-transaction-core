@@ -41,18 +41,18 @@ export class TemplatesService {
     return `This action returns all templates`;
   }
 
-  findOne(id: number) {
+  findOne(id: string) {
     // TODO: Implement actual template retrieval by ID logic
     return `This action returns a #${id} template`;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  update(id: number, updateTemplateDto: UpdateTemplateDto) {
+  update(id: string, updateTemplateDto: UpdateTemplateDto) {
     // TODO: Implement actual template update logic
     return `This action updates a #${id} template`;
   }
 
-  remove(id: number) {
+  remove(id: string) {
     this.logger.log(`Removing template with ID: ${id}`);
     // TODO: Implement actual template removal logic
     return `This action removes a #${id} template`;

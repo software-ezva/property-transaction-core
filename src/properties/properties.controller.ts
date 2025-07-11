@@ -136,12 +136,11 @@ export class PropertiesController {
   })
   async findOne(@Param('id') id: string): Promise<PropertyResponseDto> {
     try {
-      const propertyId = +id;
-      if (isNaN(propertyId)) {
+      if (!id || !id.trim()) {
         throw new HttpException('Invalid property ID', HttpStatus.BAD_REQUEST);
       }
 
-      const result = await this.propertiesService.findOne(propertyId);
+      const result = await this.propertiesService.findOne(id);
       return result;
     } catch (error) {
       this.logger.error(
@@ -198,15 +197,11 @@ export class PropertiesController {
     @Body() updatePropertyDto: UpdatePropertyDto,
   ): Promise<PropertyResponseDto> {
     try {
-      const propertyId = +id;
-      if (isNaN(propertyId)) {
+      if (!id || !id.trim()) {
         throw new HttpException('Invalid property ID', HttpStatus.BAD_REQUEST);
       }
 
-      const result = await this.propertiesService.update(
-        propertyId,
-        updatePropertyDto,
-      );
+      const result = await this.propertiesService.update(id, updatePropertyDto);
       return result;
     } catch (error) {
       this.logger.error(
@@ -255,12 +250,11 @@ export class PropertiesController {
   })
   async remove(@Param('id') id: string): Promise<void> {
     try {
-      const propertyId = +id;
-      if (isNaN(propertyId)) {
+      if (!id || !id.trim()) {
         throw new HttpException('Invalid property ID', HttpStatus.BAD_REQUEST);
       }
 
-      await this.propertiesService.remove(propertyId);
+      await this.propertiesService.remove(id);
       this.logger.log(`Property deleted: ${id}`); // Solo para operaciones críticas como DELETE
     } catch (error) {
       this.logger.error(

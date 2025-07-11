@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MaxLength, IsNumber, IsOptional } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsNumber,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateChecklistTemplateDto {
   @ApiProperty({
@@ -29,8 +35,8 @@ export class CreateChecklistTemplateDto {
 
   @ApiProperty({
     description: 'ID of the workflow template this checklist belongs to',
-    example: 1,
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   })
-  @IsNumber()
-  workflowTemplateId: number;
+  @IsUUID(4)
+  workflowTemplateId: string;
 }

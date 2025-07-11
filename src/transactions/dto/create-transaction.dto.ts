@@ -5,27 +5,24 @@ import {
   IsString,
   MaxLength,
   IsEnum,
-  IsNumber,
-  IsPositive,
+  IsUUID,
 } from 'class-validator';
 
 export class CreateTransactionDto {
   @ApiProperty({
     description: 'The ID of the property for the transaction',
-    example: 1,
+    example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  @IsNumber({}, { message: 'Property ID must be a number' })
-  @IsPositive({ message: 'Property ID must be a positive number' })
-  propertyId: number;
+  @IsUUID(4, { message: 'Property ID must be a valid UUID' })
+  propertyId: string;
 
   @ApiPropertyOptional({
     description: 'The ID of the client user (optional)',
-    example: 2,
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsOptional()
-  @IsNumber({}, { message: 'Client ID must be a number' })
-  @IsPositive({ message: 'Client ID must be a positive number' })
-  clientId?: number;
+  @IsUUID(4, { message: 'Client ID must be a valid UUID' })
+  clientId?: string;
 
   @ApiProperty({
     description:

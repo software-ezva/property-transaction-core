@@ -13,8 +13,8 @@ import { Profile, ProfileType } from './profile.entity';
 @Index(['email'])
 @Index(['auth0Id'])
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({
     type: 'varchar',

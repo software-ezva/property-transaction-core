@@ -11,8 +11,8 @@ import { Item } from './item.entity';
 
 @Entity('checklists')
 export class Checklist {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 100 })
   name: string;

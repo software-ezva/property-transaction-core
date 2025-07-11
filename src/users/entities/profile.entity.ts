@@ -16,8 +16,8 @@ export enum ProfileType {
 @Entity('profiles')
 @TableInheritance({ column: { type: 'varchar', name: 'profile_type' } })
 export abstract class Profile {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({
     type: 'enum',

@@ -5,3 +5,4 @@ export * from './duplicate-transaction.exception';
 export * from './property-not-found.exception';
 export * from './user-not-found.exception';
 export * from './transaction-not-found.exception';
+export * from './profile-not-found.exception';

@@ -11,8 +11,8 @@ import { Checklist } from './checklist.entity';
 
 @Entity('workflows')
 export class Workflow {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 100 })
   name: string;

@@ -103,7 +103,8 @@ export class TemplatesController {
   @ApiParam({
     name: 'id',
     description: 'Template ID',
-    type: 'number',
+    type: 'string',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   })
   @ApiResponse({
     status: 200,
@@ -120,12 +121,7 @@ export class TemplatesController {
   })
   findOne(@Param('id') id: string) {
     try {
-      const templateId = +id;
-      if (isNaN(templateId)) {
-        throw new HttpException('Invalid template ID', HttpStatus.BAD_REQUEST);
-      }
-
-      const result = this.templatesService.findOne(templateId);
+      const result = this.templatesService.findOne(id);
       return result;
     } catch (error) {
       this.logger.error(
@@ -151,7 +147,8 @@ export class TemplatesController {
   @ApiParam({
     name: 'id',
     description: 'Template ID',
-    type: 'number',
+    type: 'string',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   })
   @ApiBody({
     type: UpdateTemplateDto,
@@ -175,15 +172,7 @@ export class TemplatesController {
     @Body() updateTemplateDto: UpdateTemplateDto,
   ) {
     try {
-      const templateId = +id;
-      if (isNaN(templateId)) {
-        throw new HttpException('Invalid template ID', HttpStatus.BAD_REQUEST);
-      }
-
-      const result = this.templatesService.update(
-        templateId,
-        updateTemplateDto,
-      );
+      const result = this.templatesService.update(id, updateTemplateDto);
       return result;
     } catch (error) {
       this.logger.error(
@@ -208,7 +197,8 @@ export class TemplatesController {
   @ApiParam({
     name: 'id',
     description: 'Template ID',
-    type: 'number',
+    type: 'string',
+    example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   })
   @ApiResponse({
     status: 200,
@@ -225,12 +215,7 @@ export class TemplatesController {
   })
   remove(@Param('id') id: string) {
     try {
-      const templateId = +id;
-      if (isNaN(templateId)) {
-        throw new HttpException('Invalid template ID', HttpStatus.BAD_REQUEST);
-      }
-
-      const result = this.templatesService.remove(templateId);
+      const result = this.templatesService.remove(id);
       this.logger.log(`Template deleted: ${id}`); // Solo para operaciones críticas como DELETE
       return result;
     } catch (error) {

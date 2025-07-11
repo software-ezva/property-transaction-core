@@ -15,8 +15,8 @@ export enum ItemStatus {
 
 @Entity('items')
 export class Item {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'text' })
   description: string;

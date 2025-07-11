@@ -100,7 +100,7 @@ export class TransactionsService {
     }
   }
 
-  async findOne(id: number): Promise<Transaction> {
+  async findOne(id: string): Promise<Transaction> {
     try {
       const transaction = await this.transactionRepository.findOne({
         where: { transactionId: id },
@@ -131,7 +131,7 @@ export class TransactionsService {
   }
 
   async update(
-    id: number,
+    id: string,
     updateTransactionDto: UpdateTransactionDto,
   ): Promise<Transaction> {
     this.logger.log(`Updating transaction with ID: ${id}`);
@@ -156,7 +156,7 @@ export class TransactionsService {
     }
   }
 
-  async remove(id: number): Promise<{ success: boolean; message: string }> {
+  async remove(id: string): Promise<{ success: boolean; message: string }> {
     this.logger.log(`Removing transaction with ID: ${id}`);
 
     try {
@@ -320,27 +320,27 @@ export class TransactionsService {
   // Private utility methods for better code organization
   private validateCreateInput(
     agent: User,
-    propertyId: number,
-    clientId?: number,
+    propertyId: string,
+    clientId?: string,
   ): void {
     if (!agent) {
       throw new InvalidTransactionDataException('Agent parameter is required');
     }
 
-    if (!propertyId || propertyId <= 0) {
+    if (!propertyId || !propertyId.trim()) {
       throw new InvalidTransactionDataException(
         'Valid property ID is required',
       );
     }
 
-    if (clientId !== undefined && clientId <= 0) {
+    if (clientId !== undefined && (!clientId || !clientId.trim())) {
       throw new InvalidTransactionDataException(
         'Valid client ID is required when provided',
       );
     }
   }
 
-  private async findPropertyOrFail(propertyId: number): Promise<Property> {
+  private async findPropertyOrFail(propertyId: string): Promise<Property> {
     const property = await this.propertyRepository.findOne({
       where: { id: propertyId },
     });
@@ -353,7 +353,7 @@ export class TransactionsService {
     return property;
   }
 
-  private async findClientOrFail(clientId: number): Promise<User> {
+  private async findClientOrFail(clientId: string): Promise<User> {
     const client = await this.userRepository.findOne({
       where: { id: clientId },
       relations: ['profile'],

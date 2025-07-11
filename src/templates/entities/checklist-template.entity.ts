@@ -11,8 +11,8 @@ import { ItemTemplate } from './item-template.entity';
 
 @Entity('checklist_templates')
 export class ChecklistTemplate {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({
     type: 'varchar',
