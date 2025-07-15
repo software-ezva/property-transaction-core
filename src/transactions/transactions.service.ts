@@ -6,18 +6,16 @@ import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { Transaction } from './entities/transaction.entity';
 import { User } from '../users/entities/user.entity';
 import { Property } from '../properties/entities/property.entity';
-import { WorkflowTemplate } from '../templates/entities/workflow-template.entity';
 import { TemplatesService } from '../templates/templates.service';
 import { TransactionType } from '../common/enums';
 import {
   UserIsNotRealEstateAgentException,
   WorkflowTemplateDoesNotExistException,
-  InvalidTransactionDataException,
   DuplicateTransactionException,
-  PropertyNotFoundException,
-  UserNotFoundException,
   TransactionNotFoundException,
 } from '../common/exceptions';
+import { UsersService } from '../users/users.service';
+import { PropertiesService } from '../properties/properties.service';
 
 @Injectable()
 export class TransactionsService {
@@ -27,46 +25,46 @@ export class TransactionsService {
   constructor(
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
-    @InjectRepository(Property)
-    private propertyRepository: Repository<Property>,
-    @InjectRepository(WorkflowTemplate)
-    private workflowTemplateRepository: Repository<WorkflowTemplate>,
     private templatesService: TemplatesService,
+    private readonly userService: UsersService,
+    private readonly propertyService: PropertiesService,
     private dataSource: DataSource,
   ) {}
 
   async create(
     createTransactionDto: CreateTransactionDto,
-    agent: User,
+    agentId: string,
   ): Promise<Transaction> {
     const { propertyId, clientId, transactionType, additionalNotes } =
       createTransactionDto;
     try {
-      // Validate input parameters
-      this.validateCreateInput(agent, propertyId, clientId);
-
-      // Fetch related entities
-      const property = await this.findPropertyOrFail(propertyId);
-      const client = clientId ? await this.findClientOrFail(clientId) : null;
+      // Fetch agent, client(optional) and property
+      const agent = await this.userService.getUserByAuth0Id(agentId);
+      const property = await this.propertyService.findOne(propertyId);
+      const client = clientId
+        ? await this.userService.getUserByAuth0Id(clientId)
+        : null;
 
       // Check for duplicate transaction
-      await this.validateNoDuplicateTransaction(
-        property,
-        agent,
-        client,
-        transactionType,
-      );
+      if (
+        await this.existsATransaction(property, agent, client, transactionType)
+      ) {
+        this.logger.warn('Duplicate transaction found');
+        throw new DuplicateTransactionException(
+          'A transaction with the same property, agent, client, and transaction type already exists',
+        );
+      }
 
       // Create and save transaction
       const transaction = await this.createAndSaveTransaction(
+        transactionType,
         property,
         agent,
         client,
-        transactionType,
         additionalNotes,
       );
+
+      await this.chooseWorkflowTemplate(transactionType, transaction);
 
       this.logger.log(
         `Transaction created successfully with ID: ${transaction.transactionId}`,
@@ -200,86 +198,20 @@ export class TransactionsService {
     }
   }
 
-  private async createBaseTransaction(
-    property: Property,
-    agent: User,
-    additionalNotes?: string,
-  ): Promise<Transaction> {
-    // Validate that the user is a real estate agent
-    if (!agent.isRealEstateAgent()) {
-      this.logger.warn(
-        `User ${agent.id} is not a real estate agent, cannot create transaction`,
-      );
-      throw new UserIsNotRealEstateAgentException();
-    }
-
-    // Create new transaction
-    const newTransaction = this.transactionRepository.create({
-      property,
-      agent,
-      status: this.CREATION_STATUS,
-      additionalNotes,
-    });
-
-    return await this.transactionRepository.save(newTransaction);
-  }
-
-  async findDuplicateTransaction(
-    property: Property,
-    agent: User,
-    client: User | null,
-    transactionType: TransactionType,
-  ): Promise<Transaction | null> {
-    try {
-      const whereCondition = {
-        property: { id: property.id },
-        agent: { id: agent.id },
-        transactionType,
-        status: 'active',
-        ...(client ? { client: { id: client.id } } : { client: IsNull() }),
-      };
-
-      const existingTransaction = await this.transactionRepository.findOne({
-        where: whereCondition,
-        relations: ['property', 'agent', 'client'],
-      });
-
-      if (existingTransaction) {
-        this.logger.log(
-          `Duplicate transaction found with ID: ${existingTransaction.transactionId}`,
-        );
-      }
-      return existingTransaction;
-    } catch (error) {
-      this.logger.error(
-        'Error checking for duplicate transaction',
-        error instanceof Error ? error.stack : String(error),
-      );
-      throw error;
-    }
-  }
-
   async chooseWorkflowTemplate(
     transactionType: TransactionType,
     transactionObject: Transaction,
   ): Promise<{ success: boolean; transaction: Transaction }> {
     try {
-      // Check if workflow template exists
-      const templateExists =
-        await this.templatesService.existsWorkflowTemplate(transactionType);
-      if (!templateExists) {
-        this.logger.warn(
-          `Workflow template does not exist for transaction type: ${transactionType}`,
-        );
-        throw new WorkflowTemplateDoesNotExistException();
-      }
-
       return await this.dataSource.transaction(async (manager) => {
         // Get the workflow template with relations
         const workflowTemplate =
           await this.templatesService.getWorkflowTemplate(transactionType);
 
         if (!workflowTemplate) {
+          this.logger.warn(
+            `Workflow template does not exist for transaction type: ${transactionType}`,
+          );
           throw new WorkflowTemplateDoesNotExistException();
         }
 
@@ -317,105 +249,43 @@ export class TransactionsService {
     }
   }
 
-  // Private utility methods for better code organization
-  private validateCreateInput(
-    agent: User,
-    propertyId: string,
-    clientId?: string,
-  ): void {
-    if (!agent) {
-      throw new InvalidTransactionDataException('Agent parameter is required');
-    }
-
-    if (!propertyId || !propertyId.trim()) {
-      throw new InvalidTransactionDataException(
-        'Valid property ID is required',
-      );
-    }
-
-    if (clientId !== undefined && (!clientId || !clientId.trim())) {
-      throw new InvalidTransactionDataException(
-        'Valid client ID is required when provided',
-      );
-    }
-  }
-
-  private async findPropertyOrFail(propertyId: string): Promise<Property> {
-    const property = await this.propertyRepository.findOne({
-      where: { id: propertyId },
-    });
-
-    if (!property) {
-      this.logger.warn(`Property with ID ${propertyId} not found`);
-      throw new PropertyNotFoundException(propertyId);
-    }
-
-    return property;
-  }
-
-  private async findClientOrFail(clientId: string): Promise<User> {
-    const client = await this.userRepository.findOne({
-      where: { id: clientId },
-      relations: ['profile'],
-    });
-
-    if (!client) {
-      this.logger.warn(`Client with ID ${clientId} not found`);
-      throw new UserNotFoundException(clientId);
-    }
-
-    return client;
-  }
-
-  private async validateNoDuplicateTransaction(
+  async existsATransaction(
     property: Property,
     agent: User,
     client: User | null,
     transactionType: TransactionType,
-  ): Promise<void> {
-    const existingTransaction = await this.findDuplicateTransaction(
-      property,
-      agent,
-      client,
+  ): Promise<boolean> {
+    const whereCondition = {
+      property: { id: property.id },
+      agent: { id: agent.id },
       transactionType,
-    );
+      status: 'active',
+      ...(client ? { client: { id: client.id } } : { client: IsNull() }),
+    };
 
-    if (existingTransaction) {
-      const clientInfo = client ? `client ${client.id}` : 'no client';
-      this.logger.warn(
-        `Duplicate transaction found: property ${property.id}, agent ${agent.id}, ${clientInfo}, type ${transactionType}`,
-      );
-      throw new DuplicateTransactionException(
-        'A transaction with the same property, agent, client, and transaction type already exists',
-      );
-    }
+    const existingTransaction = await this.transactionRepository.findOne({
+      where: whereCondition,
+      relations: ['property', 'agent', 'client'],
+    });
+    return !!existingTransaction;
   }
 
-  private async createAndSaveTransaction(
+  async createAndSaveTransaction(
+    transactionType: TransactionType,
     property: Property,
     agent: User,
     client: User | null,
-    transactionType: TransactionType,
     additionalNotes?: string,
   ): Promise<Transaction> {
-    // Create transaction using existing business logic
-    const transaction = await this.createBaseTransaction(
+    const newTransaction = this.transactionRepository.create({
+      transactionType,
       property,
       agent,
+      status: this.CREATION_STATUS,
       additionalNotes,
-    );
+      client: client ?? undefined,
+    });
 
-    // Set client if provided
-    if (client) {
-      transaction.client = client;
-    }
-
-    // Assign workflow template based on transaction type
-    const result = await this.chooseWorkflowTemplate(
-      transactionType,
-      transaction,
-    );
-
-    return result.transaction;
+    return await this.transactionRepository.save(newTransaction);
   }
 }

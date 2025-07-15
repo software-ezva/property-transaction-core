@@ -40,6 +40,7 @@ import {
   UserNotFoundException,
   TransactionNotFoundException,
 } from '../common/exceptions';
+import { CreateTransactionResponseDto } from './dto/create-transaction-response.dto';
 
 @Controller('transactions')
 @ApiTags('transactions')
@@ -98,35 +99,16 @@ export class TransactionsController {
   async create(
     @Body() createTransactionDto: CreateTransactionDto,
     @Request() req: AuthenticatedRequest,
-  ) {
+  ): Promise<CreateTransactionResponseDto> {
     try {
       // Extract agent from JWT token
-      const auth0User = req.user;
-      if (!auth0User || !auth0User.sub) {
-        this.logger.error('No authenticated user found in request');
-        throw new HttpException(
-          'Authentication required',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-
-      // Find the agent user by Auth0 ID
-      const agent = await this.usersService.findByAuth0Id(auth0User.sub);
-      if (!agent) {
-        this.logger.warn(
-          `Agent with Auth0 ID ${auth0User.sub} not found in database`,
-        );
-        throw new NotFoundException(
-          'Agent not found. Please ensure your account is properly registered.',
-        );
-      }
-
+      const auth0User = req.user.sub;
+      // Create the transaction using the service
       const transaction = await this.transactionsService.create(
         createTransactionDto,
-        agent,
+        auth0User,
       );
-      
-      // Return only the transaction ID
+      // Return the transaction ID
       return {
         transactionId: transaction.transactionId,
         message: 'Transaction created successfully',
