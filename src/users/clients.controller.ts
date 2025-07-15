@@ -68,7 +68,11 @@ export class ClientsController extends BaseProfileController {
   ): Promise<ProfileResponseDto> {
     try {
       this.validateAuthentication(req);
-      return await this.profilesService.assignClientProfile(req.user.sub, dto);
+      const profile = await this.profilesService.assignClientProfile(
+        req.user.sub,
+        dto,
+      );
+      return { profile };
     } catch (error) {
       this.handleError(error, 'assign client profile', req.user?.sub);
     }

@@ -70,7 +70,11 @@ export class AgentsController extends BaseProfileController {
   ): Promise<ProfileResponseDto> {
     try {
       this.validateAuthentication(req);
-      return await this.profilesService.assignAgentProfile(req.user.sub, dto);
+      const profile = await this.profilesService.assignAgentProfile(
+        req.user.sub,
+        dto,
+      );
+      return { profile };
     } catch (error) {
       this.handleError(error, 'assign agent profile', req.user?.sub);
     }
