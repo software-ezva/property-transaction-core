@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
-import { PropertyResponseDto } from './dto/property-response.dto';
 import { Property } from './entities/property.entity';
 import { PropertyNotFoundException } from '../common/exceptions';
 
@@ -19,31 +18,13 @@ export class PropertiesService {
   /**
    * Maps a Property entity to PropertyResponseDto
    */
-  private mapToResponseDto(property: Property): PropertyResponseDto {
-    return {
-      id: property.id,
-      address: property.address,
-      price: property.price,
-      size: property.size,
-      bedrooms: property.bedrooms,
-      bathrooms: property.bathrooms,
-      description: property.description,
-      createdAt: property.createdAt,
-      updatedAt: property.updatedAt,
-    };
-  }
 
-  async create(
-    createPropertyDto: CreatePropertyDto,
-  ): Promise<PropertyResponseDto> {
-    this.logger.log('Creating new property');
-
+  async create(createPropertyDto: CreatePropertyDto): Promise<Property> {
     try {
-      const property = this.propertyRepository.create(createPropertyDto);
-      const savedProperty = await this.propertyRepository.save(property);
-
-      this.logger.log(`Property created with ID: ${savedProperty.id}`);
-      return this.mapToResponseDto(savedProperty);
+      let property = this.propertyRepository.create(createPropertyDto);
+      property = await this.propertyRepository.save(property);
+      this.logger.log(`Property created with ID: ${property.id}`);
+      return property;
     } catch (error) {
       this.logger.error(
         'Error creating property',
@@ -53,16 +34,14 @@ export class PropertiesService {
     }
   }
 
-  async findAll(): Promise<PropertyResponseDto[]> {
-    this.logger.log('Retrieving all properties');
-
+  async findAll(): Promise<Property[]> {
     try {
       const properties = await this.propertyRepository.find({
         order: { createdAt: 'DESC' },
       });
 
       this.logger.log(`Found ${properties.length} properties`);
-      return properties.map((property) => this.mapToResponseDto(property));
+      return properties;
     } catch (error) {
       this.logger.error(
         'Error retrieving properties',
@@ -72,9 +51,7 @@ export class PropertiesService {
     }
   }
 
-  async findOne(id: string): Promise<PropertyResponseDto> {
-    this.logger.log(`Retrieving property with ID: ${id}`);
-
+  async findOne(id: string): Promise<Property> {
     try {
       const property = await this.propertyRepository.findOne({
         where: { id },
@@ -85,7 +62,7 @@ export class PropertiesService {
       }
 
       this.logger.log(`Found property: ${property.address}`);
-      return this.mapToResponseDto(property);
+      return property;
     } catch (error) {
       this.logger.error(
         `Error retrieving property with ID: ${id}`,
@@ -98,9 +75,7 @@ export class PropertiesService {
   async update(
     id: string,
     updatePropertyDto: UpdatePropertyDto,
-  ): Promise<PropertyResponseDto> {
-    this.logger.log(`Updating property with ID: ${id}`);
-
+  ): Promise<Property> {
     try {
       const property = await this.propertyRepository.findOne({
         where: { id },
@@ -112,11 +87,10 @@ export class PropertiesService {
 
       Object.assign(property, updatePropertyDto);
       property.updatedAt = new Date();
-
       const updatedProperty = await this.propertyRepository.save(property);
 
       this.logger.log(`Property updated: ${updatedProperty.address}`);
-      return this.mapToResponseDto(updatedProperty);
+      return property;
     } catch (error) {
       this.logger.error(
         `Error updating property with ID: ${id}`,
@@ -127,8 +101,6 @@ export class PropertiesService {
   }
 
   async remove(id: string): Promise<void> {
-    this.logger.log(`Removing property with ID: ${id}`);
-
     try {
       const property = await this.propertyRepository.findOne({
         where: { id },
