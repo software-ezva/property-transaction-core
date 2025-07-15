@@ -4,9 +4,7 @@ import { User } from './entities/user.entity';
 import { Auth0User } from './interfaces/auth0-user.interface';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RealEstateAgentProfile } from './entities/real-estate-agent-profile.entity';
-import { ClientProfile } from './entities/client-profile.entity';
-import { Profile } from './entities/profile.entity';
+import { UserNotFoundException } from '../common/exceptions/user-not-found.exception';
 
 @Injectable()
 export class UsersService {
@@ -15,12 +13,6 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    @InjectRepository(Profile)
-    private profileRepository: Repository<Profile>,
-    @InjectRepository(RealEstateAgentProfile)
-    private agentProfileRepository: Repository<RealEstateAgentProfile>,
-    @InjectRepository(ClientProfile)
-    private clientProfileRepository: Repository<ClientProfile>,
   ) {}
 
   // Sync user from Auth0
@@ -56,16 +48,14 @@ export class UsersService {
     } else {
       // User doesn't exist, create new one
       isNewUser = true;
-      user = this.userRepository.create({
-        auth0Id: auth0User.sub,
-        email: auth0User.email,
-        firstName: auth0User.given_name,
-        lastName: auth0User.family_name,
-        isActive: true,
-      });
+      user = await this.create(
+        auth0User.sub,
+        auth0User.email,
+        auth0User.given_name || '',
+        auth0User.family_name || '',
+        true,
+      );
 
-      user = await this.userRepository.save(user);
-      // Load profile relation for new user (will be null initially)
       user =
         (await this.userRepository.findOne({
           where: { id: user.id },
@@ -84,24 +74,34 @@ export class UsersService {
     });
   }
 
-  // // ...existing code...
-  // create(createUserDto: CreateUserDto) {
-  //   return 'This action adds a new user';
-  // }
+  async create(
+    auth0Id: string,
+    email: string,
+    firstName: string,
+    lastName: string,
+    isActive: boolean = true,
+  ): Promise<User> {
+    const user = this.userRepository.create({
+      auth0Id,
+      email,
+      firstName,
+      lastName,
+      isActive,
+    });
+    this.logger.log(`Creating user with Auth0 ID: ${auth0Id}`);
+    return await this.userRepository.save(user);
+  }
 
-  // findAll() {
-  //   return `This action returns all users`;
-  // }
+  async getUserByAuth0Id(auth0Id: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { auth0Id },
+      relations: ['profile'],
+    });
 
-  // findOne(id: number) {
-  //   return `This action returns a #${id} user`;
-  // }
-
-  // update(id: number, updateUserDto: UpdateUserDto) {
-  //   return `This action updates a #${id} user`;
-  // }
-
-  // remove(id: number) {
-  //   return `This action removes a #${id} user`;
-  // }
+    if (!user) {
+      this.logger.warn(`User not found with auth0Id: ${auth0Id}`);
+      throw new UserNotFoundException();
+    }
+    return user;
+  }
 }

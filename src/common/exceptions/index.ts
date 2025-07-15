@@ -6,3 +6,4 @@ export * from './property-not-found.exception';
 export * from './user-not-found.exception';
 export * from './transaction-not-found.exception';
 export * from './profile-not-found.exception';
+export * from './user-already-has-a-profile.exception';

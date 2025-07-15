@@ -6,7 +6,7 @@ Feature: Carry out of transaction
 #TODO: bussines rules
 
   Scenario: Start a transaction
-    Given a transaction created by a real estate agent "Jane Smith" for the property "123 Main St"
+    Given a transaction "Listing for lease" created by a real estate agent "Jane Smith" for the property "123 Main St"
     When the real estate agent chooses a workflow template of "Listing for sale" for the transaction
     Then a copy of the workflow template would be included in the transaction with its default set of checklists
         | Checklist Name |

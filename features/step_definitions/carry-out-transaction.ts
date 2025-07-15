@@ -6,7 +6,6 @@ import { getRepositories, getServices } from '../support/database-helper';
 import { Transaction } from '../../src/transactions/entities/transaction.entity';
 import { Property } from '../../src/properties/entities/property.entity';
 import { User } from '../../src/users/entities/user.entity';
-import { ProfileType } from '../../src/users/entities/profile.entity';
 import { Workflow } from '../../src/transactions/entities/workflow.entity';
 import { Checklist } from '../../src/transactions/entities/checklist.entity';
 import { Item, ItemStatus } from '../../src/transactions/entities/item.entity';
@@ -24,75 +23,59 @@ export interface TestWorld {
 }
 
 Given(
-  'a transaction created by a real estate agent {string} for the property {string}',
-  async function (this: TestWorld, agentName: string, propertyAddress: string) {
-    const {
-      userRepository,
-      propertyRepository,
-      realEstateAgentProfileRepository,
-      transactionRepository,
-    } = getRepositories();
+  'a transaction {string} created by a real estate agent {string} for the property {string}',
+  async function (
+    this: TestWorld,
+    transactionType: string,
+    agentName: string,
+    propertyAddress: string,
+  ) {
+    const { userService, profileService, propertyService, transactionService } =
+      getServices();
 
     // Create real estate agent
-    this.user = userRepository.create({
-      auth0Id: faker.string.uuid(),
-      email: faker.internet.email(),
-      firstName: agentName,
-      lastName: agentName,
-      isActive: true,
-    });
-    this.user = await userRepository.save(this.user);
+    this.user = await userService.create(
+      faker.string.uuid(),
+      faker.internet.email(),
+      agentName,
+      agentName,
+    );
 
     // Create real estate agent profile
-    const agentProfile = realEstateAgentProfileRepository.create({
-      user: this.user,
-      profileType: ProfileType.REAL_ESTATE_AGENT,
-      licenseNumber: faker.string.alphanumeric(10),
+    await profileService.assignAgentProfile(this.user.auth0Id, {
+      esign_name: agentName,
+      esign_initials: agentName.charAt(0).toUpperCase(),
+      license_number: faker.string.alphanumeric(10),
     });
-    const savedProfile =
-      await realEstateAgentProfileRepository.save(agentProfile);
-
-    // Update user with profile relationship
-    this.user.profile = savedProfile;
-    this.user = await userRepository.save(this.user);
-
-    // Create client user
-    const client = userRepository.create({
-      auth0Id: faker.string.uuid(),
-      email: faker.internet.email(),
-      firstName: faker.person.firstName(),
-      lastName: faker.person.lastName(),
-      isActive: true,
-    });
-    const savedClient = await userRepository.save(client);
 
     // Create property
-    this.property = propertyRepository.create({
+    const property = await propertyService.create({
       address: propertyAddress,
       price: faker.number.int({ min: 100000, max: 1000000 }),
       size: faker.number.int({ min: 500, max: 5000 }),
       bedrooms: faker.number.int({ min: 1, max: 5 }),
       bathrooms: faker.number.int({ min: 1, max: 3 }),
     });
-    this.property = await propertyRepository.save(this.property);
+    this.property = property;
 
-    // Create transaction directly with both agent and client
-    this.transaction = transactionRepository.create({
-      property: this.property,
-      agent: this.user,
-      client: savedClient,
-      status: 'active',
-    });
-    this.transaction = await transactionRepository.save(this.transaction);
+    // Create transaction with both agent and client
+    this.transaction = await transactionService.createAndSaveTransaction(
+      mapToTransactionType(transactionType),
+      this.property,
+      this.user,
+      null,
+      'Initial transaction setup',
+    );
 
-    // Verify transaction exists using the repository
-    const hasTransaction = await transactionRepository.count({
-      where: {
-        property: { id: this.property.id },
-        agent: { id: this.user.id },
-      },
-    });
-    expect(hasTransaction).toBeGreaterThan(0);
+    // Verify transaction exists
+    const hasTransaction = await transactionService.existsATransaction(
+      this.property,
+      this.user,
+      null,
+      this.transaction.transactionType,
+    );
+    console.log('value', hasTransaction);
+    expect(hasTransaction).toBe(true);
   },
 );
 
@@ -101,9 +84,8 @@ When(
   async function (this: TestWorld, transactionType: string) {
     const { transactionService } = getServices();
     await setUpTemplateWorkflow.call(this, transactionType);
-    const transactionTypeEnum = mapToTransactionType(transactionType);
     const result = await transactionService.chooseWorkflowTemplate(
-      transactionTypeEnum,
+      mapToTransactionType(transactionType),
       this.transaction as Transaction,
     );
     this.transaction = result.transaction;
@@ -349,65 +331,43 @@ async function setUpWorkflow(
   this: TestWorld,
   typeOfTransaction: TransactionType = TransactionType.LISTING_FOR_LEASE,
 ) {
-  const {
-    userRepository,
-    propertyRepository,
-    realEstateAgentProfileRepository,
-    transactionRepository,
-    workflowRepository,
-  } = getRepositories();
+  const { userService, profileService, propertyService, transactionService } =
+    getServices();
+  const { workflowRepository } = getRepositories();
 
-  this.user = userRepository.create({
-    auth0Id: faker.string.uuid(),
-    email: faker.internet.email(),
-    firstName: faker.person.firstName(),
-    lastName: faker.person.lastName(),
-    isActive: true,
-  });
-  this.user = await userRepository.save(this.user);
+  // Create real estate agent
+  this.user = await userService.create(
+    faker.string.uuid(),
+    faker.internet.email(),
+    faker.person.firstName(),
+    faker.person.lastName(),
+  );
 
   // Create real estate agent profile
-  const agentProfile = realEstateAgentProfileRepository.create({
-    user: this.user,
-    profileType: ProfileType.REAL_ESTATE_AGENT,
-    licenseNumber: faker.string.alphanumeric(10),
+  await profileService.assignAgentProfile(this.user.auth0Id, {
+    esign_name: faker.person.fullName(),
+    esign_initials: faker.person.firstName().charAt(0).toUpperCase(),
+    license_number: faker.string.alphanumeric(10),
   });
-  const savedProfile =
-    await realEstateAgentProfileRepository.save(agentProfile);
-
-  // Update user with profile relationship
-  this.user.profile = savedProfile;
-  this.user = await userRepository.save(this.user);
-
-  // Create client user
-  const client = userRepository.create({
-    auth0Id: faker.string.uuid(),
-    email: faker.internet.email(),
-    firstName: faker.person.firstName(),
-    lastName: faker.person.lastName(),
-    isActive: true,
-  });
-  const savedClient = await userRepository.save(client);
 
   // Create property
-  this.property = propertyRepository.create({
+  const property = await propertyService.create({
     address: faker.location.streetAddress(),
     price: faker.number.int({ min: 100000, max: 1000000 }),
     size: faker.number.int({ min: 500, max: 5000 }),
     bedrooms: faker.number.int({ min: 1, max: 5 }),
     bathrooms: faker.number.int({ min: 1, max: 3 }),
   });
-  this.property = await propertyRepository.save(this.property);
+  this.property = property;
 
   // Create transaction with both agent and client
-  this.transaction = transactionRepository.create({
-    property: this.property,
-    agent: this.user,
-    client: savedClient,
-    transactionType: typeOfTransaction,
-    status: 'active',
-  });
-  this.transaction = await transactionRepository.save(this.transaction);
+  this.transaction = await transactionService.createAndSaveTransaction(
+    typeOfTransaction,
+    this.property,
+    this.user,
+    null,
+    'Initial transaction setup',
+  );
 
   this.workflow = workflowRepository.create({
     transaction: this.transaction,

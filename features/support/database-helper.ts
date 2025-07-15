@@ -14,6 +14,10 @@ import { Workflow } from '../../src/transactions/entities/workflow.entity';
 import { Checklist } from '../../src/transactions/entities/checklist.entity';
 import { Item } from '../../src/transactions/entities/item.entity';
 import { ItemService } from '../../src/transactions/item.service';
+import { UsersService } from '../../src/users/users.service';
+import { ClientProfile } from '../../src/users/entities/client-profile.entity';
+import { ProfilesService } from '../../src/users/profiles.service';
+import { PropertiesService } from '../../src/properties/properties.service';
 
 // Lazy initialization functions
 export function getRepositories() {
@@ -25,6 +29,7 @@ export function getRepositories() {
     realEstateAgentProfileRepository: dataSource.getRepository(
       RealEstateAgentProfile,
     ),
+    clientProfileRepository: dataSource.getRepository(ClientProfile),
     transactionRepository: dataSource.getRepository(Transaction),
     workflowTemplateRepository: dataSource.getRepository(WorkflowTemplate),
     checklistTemplateRepository: dataSource.getRepository(ChecklistTemplate),
@@ -38,7 +43,16 @@ export function getRepositories() {
 export function getServices() {
   const dataSource = getDataSource();
   const repositories = getRepositories();
-
+  const userService = new UsersService(repositories.userRepository);
+  const profileService = new ProfilesService(
+    repositories.userRepository,
+    repositories.realEstateAgentProfileRepository,
+    repositories.clientProfileRepository,
+    userService,
+  );
+  const propertyService = new PropertiesService(
+    repositories.propertyRepository,
+  );
   const templatesService = new TemplatesService(
     repositories.workflowTemplateRepository,
     repositories.checklistTemplateRepository,
@@ -51,10 +65,9 @@ export function getServices() {
 
   const transactionService = new TransactionsService(
     repositories.transactionRepository,
-    repositories.userRepository,
-    repositories.propertyRepository,
-    repositories.workflowTemplateRepository,
     templatesService,
+    userService,
+    propertyService,
     dataSource,
   );
 
@@ -68,5 +81,8 @@ export function getServices() {
     transactionService,
     checklistService,
     itemService,
+    userService,
+    profileService,
+    propertyService,
   };
 }
