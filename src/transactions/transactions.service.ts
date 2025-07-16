@@ -3,9 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, IsNull } from 'typeorm';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { TransactionWithSummaryInfo } from './interfaces/transaction-with-summary-info.interface';
 import { Transaction } from './entities/transaction.entity';
 import { User } from '../users/entities/user.entity';
 import { Property } from '../properties/entities/property.entity';
+import { WorkflowAnalyticsService } from './workflow-analytics.service';
 import { TemplatesService } from '../templates/templates.service';
 import { TransactionType } from '../common/enums';
 import {
@@ -28,6 +30,7 @@ export class TransactionsService {
     private templatesService: TemplatesService,
     private readonly userService: UsersService,
     private readonly propertyService: PropertiesService,
+    private readonly workflowAnalyticsService: WorkflowAnalyticsService,
     private dataSource: DataSource,
   ) {}
 
@@ -80,22 +83,35 @@ export class TransactionsService {
     }
   }
 
-  async findAll(): Promise<Transaction[]> {
-    try {
-      const transactions = await this.transactionRepository.find({
-        relations: ['property', 'agent', 'client', 'workflow'],
-        order: { createdAt: 'DESC' },
-      });
+  async findAll(): Promise<TransactionWithSummaryInfo[]> {
+    const transactions = await this.transactionRepository.find({
+      relations: [
+        'property',
+        'agent',
+        'client',
+        'workflow',
+        'workflow.checklists',
+        'workflow.checklists.items',
+      ],
+      order: { createdAt: 'DESC' },
+    });
 
-      this.logger.log(`Retrieved ${transactions.length} transactions`);
-      return transactions;
-    } catch (error) {
-      this.logger.error(
-        'Failed to retrieve transactions',
-        error instanceof Error ? error.stack : String(error),
-      );
-      throw error;
-    }
+    this.logger.log(`Retrieved ${transactions.length} transactions`);
+
+    return transactions.map((transaction) => ({
+      transaction,
+      propertyAddress: transaction.property.address,
+      propertyValue: Number(transaction.property.price),
+      clientName: transaction.client ? transaction.client.fullName : null,
+      totalWorkflowItems:
+        this.workflowAnalyticsService.calculateTotalWorkflowItems(transaction),
+      completedWorkflowItems:
+        this.workflowAnalyticsService.calculateCompletedWorkflowItems(
+          transaction,
+        ),
+      nextIncompleteItemDate:
+        this.workflowAnalyticsService.getNextIncompleteItemDate(transaction),
+    }));
   }
 
   async findOne(id: string): Promise<Transaction> {

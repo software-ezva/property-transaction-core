@@ -30,11 +30,15 @@ export class Item {
     default: ItemStatus.NOT_STARTED,
   })
   status: ItemStatus;
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'date', default: () => 'CURRENT_DATE' })
   createdAt: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  updatedAt: Date;
+  @Column({
+    type: 'date',
+    default: () => 'CURRENT_DATE',
+    nullable: true,
+  })
+  expectClosingDate?: Date;
 
   // Relaciones
   @ManyToOne(() => Checklist, (checklist) => checklist.items)

@@ -18,6 +18,7 @@ import { UsersService } from '../../src/users/users.service';
 import { ClientProfile } from '../../src/users/entities/client-profile.entity';
 import { ProfilesService } from '../../src/users/profiles.service';
 import { PropertiesService } from '../../src/properties/properties.service';
+import { WorkflowAnalyticsService } from '../../src/transactions/workflow-analytics.service';
 
 // Lazy initialization functions
 export function getRepositories() {
@@ -53,6 +54,7 @@ export function getServices() {
   const propertyService = new PropertiesService(
     repositories.propertyRepository,
   );
+  const workflowAnalyticsService = new WorkflowAnalyticsService();
   const templatesService = new TemplatesService(
     repositories.workflowTemplateRepository,
     repositories.checklistTemplateRepository,
@@ -68,6 +70,7 @@ export function getServices() {
     templatesService,
     userService,
     propertyService,
+    workflowAnalyticsService,
     dataSource,
   );
 

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TransactionsService } from './transactions.service';
 import { TransactionsController } from './transactions.controller';
+import { WorkflowAnalyticsService } from './workflow-analytics.service';
 import { Transaction } from './entities/transaction.entity';
 import { User } from '../users/entities/user.entity';
 import { Property } from '../properties/entities/property.entity';
@@ -18,7 +19,7 @@ import { PropertiesModule } from 'src/properties/properties.module';
     PropertiesModule,
   ],
   controllers: [TransactionsController],
-  providers: [TransactionsService],
-  exports: [TransactionsService],
+  providers: [TransactionsService, WorkflowAnalyticsService],
+  exports: [TransactionsService, WorkflowAnalyticsService],
 })
 export class TransactionsModule {}

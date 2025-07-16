@@ -31,6 +31,8 @@ import { TemplatesService } from '../templates/templates.service';
 import { UsersService } from '../users/users.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { TransactionSummaryDto } from './dto/transaction-summary.dto';
+import { TransactionWithSummaryInfo } from './interfaces/transaction-with-summary-info.interface';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthenticatedRequest } from '../common/interfaces';
 import {
@@ -160,19 +162,36 @@ export class TransactionsController {
   @Get()
   @ApiOperation({
     summary: 'Get all transactions',
-    description: 'Retrieves a list of all transactions in the system.',
+    description:
+      'Retrieves a list of all transactions in the system with summary information.',
   })
   @ApiResponse({
     status: 200,
     description: 'Transactions retrieved successfully',
+    type: TransactionSummaryDto,
+    isArray: true,
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during transactions retrieval',
   })
-  findAll() {
+  async findAll(): Promise<TransactionSummaryDto[]> {
     try {
-      const result = this.transactionsService.findAll();
-      return result;
+      const results: TransactionWithSummaryInfo[] =
+        await this.transactionsService.findAll();
+      return results.map((result) => ({
+        transactionId: result.transaction?.transactionId ?? null,
+        transactionType: result.transaction?.transactionType ?? null,
+        status: result.transaction?.status ?? null,
+        additionalNotes: result.transaction?.additionalNotes || null,
+        createdAt: result.transaction?.createdAt ?? null,
+        updatedAt: result.transaction?.updatedAt ?? null,
+        propertyAddress: result.propertyAddress ?? null,
+        propertyValue: result.propertyValue ?? null,
+        clientName: result.clientName ?? null,
+        totalWorkflowItems: result.totalWorkflowItems ?? 0,
+        completedWorkflowItems: result.completedWorkflowItems ?? 0,
+        nextIncompleteItemDate: result.nextIncompleteItemDate ?? null,
+      }));
     } catch (error) {
       this.logger.error(
         'Failed to retrieve transactions',
