@@ -9,7 +9,7 @@ import {
 import { Property } from '../../properties/entities/property.entity';
 import { User } from '../../users/entities/user.entity';
 import { Workflow } from './workflow.entity';
-import { TransactionType } from '../../common/enums';
+import { TransactionType, TransactionStatus } from '../../common/enums';
 
 @Entity('transactions')
 export class Transaction {
@@ -22,8 +22,12 @@ export class Transaction {
   })
   transactionType: TransactionType;
 
-  @Column({ type: 'varchar', length: 50, default: 'active' })
-  status: string;
+  @Column({
+    type: 'enum',
+    enum: TransactionStatus,
+    default: TransactionStatus.IN_PREPARATION,
+  })
+  status: TransactionStatus;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   additionalNotes?: string;

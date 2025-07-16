@@ -4,8 +4,11 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Logger, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
+  process.env.TZ = process.env.TZ || 'America/New_York';
+
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Main');
+
   const config = new DocumentBuilder()
     .setTitle('Property Transaction Manager API')
     .setDescription(

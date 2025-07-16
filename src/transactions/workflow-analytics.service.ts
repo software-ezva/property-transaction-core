@@ -28,13 +28,9 @@ export class WorkflowAnalyticsService {
   getNextIncompleteItemDate(transaction: Transaction): Date | null {
     if (!transaction.workflow?.checklists) return null;
 
-    // Obtener la fecha actual en UTC (sin hora)
-    const today = new Date();
-    const currentDate = new Date(
-      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
-    );
-
-    let nextDate: Date | null = null;
+    // Simple y directo - la configuración global de TZ ya maneja esto
+    const today = new Date().toISOString().split('T')[0];
+    let nextDateStr: string | null = null;
 
     for (const checklist of transaction.workflow.checklists) {
       if (!checklist.items) continue;
@@ -44,19 +40,24 @@ export class WorkflowAnalyticsService {
         if (item.status !== ItemStatus.COMPLETED) {
           // Solo considerar items que tienen fecha de vencimiento
           if (item.expectClosingDate) {
-            const itemDate = new Date(item.expectClosingDate);
+            const itemDateStr =
+              typeof item.expectClosingDate === 'string'
+                ? item.expectClosingDate
+                : item.expectClosingDate.toISOString().split('T')[0];
 
-            // Comparar fechas (ambas en UTC)
-            if (itemDate >= currentDate) {
-              if (!nextDate || itemDate < nextDate) {
-                nextDate = itemDate;
-              }
+            // Comparación simple de strings YYYY-MM-DD
+            if (
+              itemDateStr >= today &&
+              (!nextDateStr || itemDateStr < nextDateStr)
+            ) {
+              nextDateStr = itemDateStr;
             }
           }
         }
       }
     }
 
-    return nextDate;
+    // Retornar Date object o null
+    return nextDateStr ? new Date(nextDateStr + 'T00:00:00.000Z') : null;
   }
 }

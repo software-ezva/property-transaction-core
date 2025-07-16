@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { TransactionStatus } from '../../common/enums';
 
 export class TransactionSummaryDto {
   @ApiProperty({
@@ -15,9 +16,10 @@ export class TransactionSummaryDto {
 
   @ApiProperty({
     description: 'The status of the transaction',
-    example: 'active',
+    enum: TransactionStatus,
+    example: TransactionStatus.ACTIVE,
   })
-  status: string;
+  status: TransactionStatus;
 
   @ApiPropertyOptional({
     description: 'Additional notes for the transaction',

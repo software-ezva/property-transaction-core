@@ -9,7 +9,7 @@ import { User } from '../users/entities/user.entity';
 import { Property } from '../properties/entities/property.entity';
 import { WorkflowAnalyticsService } from './workflow-analytics.service';
 import { TemplatesService } from '../templates/templates.service';
-import { TransactionType } from '../common/enums';
+import { TransactionType, TransactionStatus } from '../common/enums';
 import {
   UserIsNotRealEstateAgentException,
   WorkflowTemplateDoesNotExistException,
@@ -22,7 +22,7 @@ import { PropertiesService } from '../properties/properties.service';
 @Injectable()
 export class TransactionsService {
   private readonly logger = new Logger(TransactionsService.name);
-  private readonly CREATION_STATUS = 'active';
+  private readonly CREATION_STATUS = TransactionStatus.IN_PREPARATION;
 
   constructor(
     @InjectRepository(Transaction)
@@ -275,7 +275,6 @@ export class TransactionsService {
       property: { id: property.id },
       agent: { id: agent.id },
       transactionType,
-      status: 'active',
       ...(client ? { client: { id: client.id } } : { client: IsNull() }),
     };
 
