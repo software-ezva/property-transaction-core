@@ -9,9 +9,7 @@ import {
   Logger,
   HttpException,
   HttpStatus,
-  UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import {
   ApiTags,
   ApiOperation,
@@ -21,7 +19,6 @@ import {
   ApiBadRequestResponse,
   ApiNotFoundResponse,
   ApiInternalServerErrorResponse,
-  ApiBearerAuth,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { PropertiesService } from './properties.service';
@@ -32,12 +29,9 @@ import { PropertyNotFoundException } from '../common/exceptions';
 
 @Controller('properties')
 @ApiTags('properties')
-@UseGuards(AuthGuard('jwt'))
-@ApiBearerAuth()
 @ApiUnauthorizedResponse({
   description: 'User not authenticated or authorization failed',
 })
-@ApiTags('properties')
 export class PropertiesController {
   private readonly logger = new Logger(PropertiesController.name);
 

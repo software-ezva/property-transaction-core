@@ -2,16 +2,13 @@ import {
   Controller,
   Post,
   Body,
-  UseGuards,
   Req,
   Logger,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import {
   ApiTags,
-  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiBody,
@@ -37,8 +34,6 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post('sync')
-  @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Sync user from Auth0',
     description:

@@ -1,7 +1,5 @@
-import { UseGuards, Logger, HttpException, HttpStatus } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Logger, HttpException, HttpStatus } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiUnauthorizedResponse,
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
@@ -13,8 +11,6 @@ interface AuthenticatedRequest extends Request {
   user: Auth0User;
 }
 
-@UseGuards(AuthGuard('jwt'))
-@ApiBearerAuth()
 @ApiUnauthorizedResponse({
   description: 'User not authenticated or authorization failed',
 })

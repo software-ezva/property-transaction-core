@@ -7,7 +7,6 @@ import {
   Param,
   Delete,
   BadRequestException,
-  UseGuards,
   Logger,
   HttpException,
   HttpStatus,
@@ -20,7 +19,6 @@ import {
   ApiResponse,
   ApiBody,
   ApiParam,
-  ApiBearerAuth,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
   ApiUnauthorizedResponse,
@@ -33,7 +31,6 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { TransactionSummaryDto } from './dto/transaction-summary.dto';
 import { TransactionWithSummaryInfo } from './interfaces/transaction-with-summary-info.interface';
-import { AuthGuard } from '@nestjs/passport';
 import { AuthenticatedRequest } from '../common/interfaces';
 import {
   InvalidTransactionDataException,
@@ -55,9 +52,7 @@ export class TransactionsController {
     private readonly usersService: UsersService,
   ) {}
 
-  @UseGuards(AuthGuard('jwt'))
   @Post()
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Create a new transaction',
     description:
