@@ -83,8 +83,14 @@ export class TransactionsService {
     }
   }
 
-  async findAll(): Promise<TransactionWithSummaryInfo[]> {
+  async findAll(userId: string): Promise<TransactionWithSummaryInfo[]> {
+    const user = await this.userService.getUserByAuth0Id(userId);
+    // get role and build a where clause dynamically
+    const userRole = user.isRealEstateAgent() ? 'agent' : 'client';
+    const whereClause = { [userRole]: { id: user.id } };
+
     const transactions = await this.transactionRepository.find({
+      where: whereClause,
       relations: [
         'property',
         'agent',
@@ -96,7 +102,9 @@ export class TransactionsService {
       order: { createdAt: 'DESC' },
     });
 
-    this.logger.log(`Retrieved ${transactions.length} transactions`);
+    this.logger.log(
+      `Retrieved ${transactions.length} transactions for ${userRole} ${userId}`,
+    );
 
     return transactions.map((transaction) => ({
       transaction,

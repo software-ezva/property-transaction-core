@@ -169,10 +169,15 @@ export class TransactionsController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during transactions retrieval',
   })
-  async findAll(): Promise<TransactionSummaryDto[]> {
+  async findAll(
+    @Request() req: AuthenticatedRequest,
+  ): Promise<TransactionSummaryDto[]> {
     try {
+      // Extract agent from JWT token
+      const auth0User = req.user.sub;
+      // Create the transaction using the service
       const results: TransactionWithSummaryInfo[] =
-        await this.transactionsService.findAll();
+        await this.transactionsService.findAll(auth0User);
       return results.map((result) => ({
         transactionId: result.transaction?.transactionId ?? null,
         transactionType: result.transaction?.transactionType ?? null,
