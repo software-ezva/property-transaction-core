@@ -7,6 +7,7 @@ import { TemplatesModule } from './templates/templates.module';
 import { ConfigModule } from '@nestjs/config';
 import { PropertiesModule } from './properties/properties.module';
 import { AuthzModule } from './authz/authz.module';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
@@ -26,12 +27,16 @@ import { AuthzModule } from './authz/authz.module';
       logging: true,
       // TODO:Setting synchronize: true shouldn't be used in production - otherwise you can lose production data.
       autoLoadEntities: true,
+      extra: {
+        timezone: process.env.DB_TIMEZONE || 'America/New_York',
+      },
     }),
     UsersModule,
     TransactionsModule,
     TemplatesModule,
     PropertiesModule,
     AuthzModule,
+    DocumentsModule,
   ],
 })
 export class AppModule {
