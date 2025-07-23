@@ -30,7 +30,9 @@ import { UsersService } from '../users/users.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { TransactionSummaryDto } from './dto/transaction-summary.dto';
+import { TransactionDetailDto } from './dto/transaction-detail.dto';
 import { TransactionWithSummaryInfo } from './interfaces/transaction-with-summary-info.interface';
+import { TransactionWithDetailedInfo } from './interfaces/transaction-with-detailed-info.interface';
 import { AuthenticatedRequest } from '../common/interfaces';
 import {
   InvalidTransactionDataException,
@@ -204,32 +206,6 @@ export class TransactionsController {
     }
   }
 
-  @Get('test/service-health')
-  @ApiOperation({
-    summary: 'Service health check',
-    description: 'Returns the health status of transaction-related services.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Service health information retrieved successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        transactionsService: { type: 'string', example: 'OK' },
-        templatesService: { type: 'string', example: 'OK' },
-        timestamp: { type: 'string', format: 'date-time' },
-      },
-    },
-  })
-  testServiceHealth() {
-    const healthStatus = {
-      transactionsService: 'OK',
-      templatesService: 'OK',
-      timestamp: new Date().toISOString(),
-    };
-    return healthStatus;
-  }
-
   @Get(':id')
   @ApiOperation({
     summary: 'Get transaction by ID',
@@ -243,6 +219,7 @@ export class TransactionsController {
   @ApiResponse({
     status: 200,
     description: 'Transaction retrieved successfully',
+    type: TransactionDetailDto,
   })
   @ApiNotFoundResponse({
     description: 'Transaction not found',
@@ -253,7 +230,7 @@ export class TransactionsController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during transaction retrieval',
   })
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string): Promise<TransactionDetailDto> {
     try {
       if (!id || !id.trim()) {
         throw new HttpException(
@@ -262,9 +239,28 @@ export class TransactionsController {
         );
       }
 
-      const result = this.transactionsService.findOne(id);
+      const result: TransactionWithDetailedInfo =
+        await this.transactionsService.findOneWithDetails(id);
       this.logger.log(`Transaction with ID ${id} retrieved successfully`);
-      return result;
+
+      return {
+        transactionId: result.transaction?.transactionId ?? null,
+        transactionType: result.transaction?.transactionType ?? null,
+        status: result.transaction?.status ?? null,
+        additionalNotes: result.transaction?.additionalNotes || null,
+        createdAt: result.transaction?.createdAt ?? null,
+        updatedAt: result.transaction?.updatedAt ?? null,
+        totalWorkflowItems: result.totalWorkflowItems ?? 0,
+        completedWorkflowItems: result.completedWorkflowItems ?? 0,
+        nextIncompleteItemDate: result.nextIncompleteItemDate ?? null,
+        propertyAddress: result.propertyAddress ?? null,
+        propertyPrice: result.propertyPrice ?? null,
+        propertySize: result.propertySize ?? null,
+        propertyBedrooms: result.propertyBedrooms ?? null,
+        propertyBathrooms: result.propertyBathrooms ?? null,
+        clientName: result.clientName ?? null,
+        clientEmail: result.clientEmail ?? null,
+      };
     } catch (error) {
       this.logger.error(
         `Failed to retrieve transaction with ID: ${id}`,

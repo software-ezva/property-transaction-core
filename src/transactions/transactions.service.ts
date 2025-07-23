@@ -4,6 +4,7 @@ import { Repository, DataSource, IsNull } from 'typeorm';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { TransactionWithSummaryInfo } from './interfaces/transaction-with-summary-info.interface';
+import { TransactionWithDetailedInfo } from './interfaces/transaction-with-detailed-info.interface';
 import { Transaction } from './entities/transaction.entity';
 import { User } from '../users/entities/user.entity';
 import { Property } from '../properties/entities/property.entity';
@@ -146,6 +147,62 @@ export class TransactionsService {
     } catch (error) {
       this.logger.error(
         `Failed to retrieve transaction with ID: ${id}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw error;
+    }
+  }
+
+  async findOneWithDetails(id: string): Promise<TransactionWithDetailedInfo> {
+    try {
+      const transaction = await this.transactionRepository.findOne({
+        where: { transactionId: id },
+        relations: [
+          'property',
+          'agent',
+          'agent.profile',
+          'client',
+          'client.profile',
+          'workflow',
+          'workflow.checklists',
+          'workflow.checklists.items',
+        ],
+      });
+
+      if (!transaction) {
+        this.logger.warn(`Transaction with ID ${id} not found`);
+        throw new TransactionNotFoundException(id);
+      }
+
+      // Build the detailed response following findAll pattern
+      const result = {
+        transaction,
+        propertyAddress: transaction.property?.address || null,
+        propertyPrice: transaction.property?.price || null,
+        propertySize: transaction.property?.size || null,
+        propertyBedrooms: transaction.property?.bedrooms || null,
+        propertyBathrooms: transaction.property?.bathrooms || null,
+        clientName: transaction.client?.fullName || null,
+        clientEmail: transaction.client?.email || null,
+        totalWorkflowItems:
+          this.workflowAnalyticsService.calculateTotalWorkflowItems(
+            transaction,
+          ),
+        completedWorkflowItems:
+          this.workflowAnalyticsService.calculateCompletedWorkflowItems(
+            transaction,
+          ),
+        nextIncompleteItemDate:
+          this.workflowAnalyticsService.getNextIncompleteItemDate(transaction),
+      };
+
+      this.logger.log(
+        `Transaction details with ID ${id} retrieved successfully`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to retrieve transaction details with ID: ${id}`,
         error instanceof Error ? error.stack : String(error),
       );
       throw error;
