@@ -69,23 +69,23 @@ export class TemplatesController {
 
   @Get()
   @ApiOperation({
-    summary: 'Get all templates',
+    summary: 'Get all workflow templates',
     description: 'Retrieves a list of all workflow templates in the system.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Templates retrieved successfully',
+    description: 'Workflow templates retrieved successfully',
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during templates retrieval',
   })
-  findAll() {
+  async findAll() {
     try {
-      const result = this.templatesService.findAll();
-      return result;
+      const results = await this.templatesService.findAll();
+      return results;
     } catch (error) {
       this.logger.error(
-        'Failed to retrieve templates',
+        'Failed to retrieve workflow templates',
         error instanceof Error ? error.stack : String(error),
       );
       throw new HttpException(

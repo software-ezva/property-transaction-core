@@ -36,9 +36,43 @@ export class TemplatesService {
     return 'This action adds a new template';
   }
 
-  findAll() {
-    // TODO: Implement actual template retrieval logic
-    return `This action returns all templates`;
+  async findAll() {
+    try {
+      const templates = await this.workflowTemplateRepository.find({
+        relations: ['checklistTemplates', 'checklistTemplates.items'],
+        order: { createdAt: 'DESC' },
+        select: {
+          id: true,
+          name: true,
+          transactionType: true,
+          checklistTemplates: {
+            name: true,
+            items: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      // Transform the data to include task count instead of items array
+      const transformedTemplates = templates.map((template) => ({
+        id: template.id,
+        name: template.name,
+        transactionType: template.transactionType,
+        checklistTemplates: template.checklistTemplates.map((checklist) => ({
+          name: checklist.name,
+          taskCount: checklist.items.length,
+        })),
+      }));
+
+      return transformedTemplates;
+    } catch (error) {
+      this.logger.error(
+        'Error retrieving workflow templates',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw error;
+    }
   }
 
   findOne(id: string) {
