@@ -24,8 +24,8 @@ import {
   ApiUnauthorizedResponse,
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
-import { TransactionsService } from './transactions.service';
-import { TemplatesService } from '../templates/templates.service';
+import { TransactionsService } from './services/transactions.service';
+import { TemplatesService } from '../templates/services/templates.service';
 import { UsersService } from '../users/users.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';

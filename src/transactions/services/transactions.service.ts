@@ -1,24 +1,24 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, IsNull } from 'typeorm';
-import { CreateTransactionDto } from './dto/create-transaction.dto';
-import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { TransactionWithSummaryInfo } from './interfaces/transaction-with-summary-info.interface';
-import { TransactionWithDetailedInfo } from './interfaces/transaction-with-detailed-info.interface';
-import { Transaction } from './entities/transaction.entity';
-import { User } from '../users/entities/user.entity';
-import { Property } from '../properties/entities/property.entity';
-import { WorkflowAnalyticsService } from './workflow-analytics.service';
-import { TemplatesService } from '../templates/templates.service';
-import { TransactionType, TransactionStatus } from '../common/enums';
+import { CreateTransactionDto } from '../dto/create-transaction.dto';
+import { UpdateTransactionDto } from '../dto/update-transaction.dto';
+import { TransactionWithSummaryInfo } from '../interfaces/transaction-with-summary-info.interface';
+import { TransactionWithDetailedInfo } from '../interfaces/transaction-with-detailed-info.interface';
+import { Transaction } from '../entities/transaction.entity';
+import { User } from '../../users/entities/user.entity';
+import { Property } from '../../properties/entities/property.entity';
+import { WorkflowAnalyticsService } from '../workflow-analytics.service';
+import { TemplatesService } from '../../templates/services/templates.service';
+import { TransactionType, TransactionStatus } from '../../common/enums';
 import {
   UserIsNotRealEstateAgentException,
   WorkflowTemplateDoesNotExistException,
   DuplicateTransactionException,
   TransactionNotFoundException,
-} from '../common/exceptions';
-import { UsersService } from '../users/users.service';
-import { PropertiesService } from '../properties/properties.service';
+} from '../../common/exceptions';
+import { UsersService } from '../../users/users.service';
+import { PropertiesService } from '../../properties/properties.service';
 
 @Injectable()
 export class TransactionsService {

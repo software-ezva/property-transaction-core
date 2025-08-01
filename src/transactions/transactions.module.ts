@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TransactionsService } from './transactions.service';
+import { TransactionsService } from './services/transactions.service';
 import { TransactionsController } from './transactions.controller';
 import { WorkflowAnalyticsService } from './workflow-analytics.service';
 import { Transaction } from './entities/transaction.entity';
