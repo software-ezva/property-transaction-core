@@ -20,9 +20,18 @@ import {
   ApiNotFoundResponse,
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
-import { TemplatesService } from './templates.service';
+import { TemplatesService } from './services/templates.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
-import { UpdateTemplateDto } from './dto/update-template.dto';
+import { CreateTemplateResponseDto } from './dto/create-template-response.dto';
+import { UpdateWorkflowTemplateDto } from './dto/update-workflow-template-complete.dto';
+import { UpdateTemplateResponseDto } from './dto/update-template-response.dto';
+import { TemplateSummaryDto } from './dto/template-summary.dto';
+import { TemplateDetailDto } from './dto/template-detail.dto';
+import {
+  TemplateNotFoundException,
+  InvalidTemplateDataException,
+  TemplateInUseException,
+} from './exceptions';
 
 @Controller('templates')
 @ApiTags('templates')
@@ -44,6 +53,7 @@ export class TemplatesController {
   @ApiResponse({
     status: 201,
     description: 'Template created successfully',
+    type: CreateTemplateResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid template data provided',
@@ -51,11 +61,16 @@ export class TemplatesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during template creation',
   })
-  create(@Body() createTemplateDto: CreateTemplateDto) {
+  async create(
+    @Body() createTemplateDto: CreateTemplateDto,
+  ): Promise<CreateTemplateResponseDto> {
     try {
-      const result = this.templatesService.create(createTemplateDto);
-      return result;
+      return await this.templatesService.create(createTemplateDto);
     } catch (error) {
+      if (error instanceof InvalidTemplateDataException) {
+        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      }
+
       this.logger.error(
         'Failed to create template',
         error instanceof Error ? error.stack : String(error),
@@ -70,19 +85,20 @@ export class TemplatesController {
   @Get()
   @ApiOperation({
     summary: 'Get all workflow templates',
-    description: 'Retrieves a list of all workflow templates in the system.',
+    description:
+      'Retrieves a list of all workflow templates in the system with summary information including checklist names and task counts.',
   })
   @ApiResponse({
     status: 200,
     description: 'Workflow templates retrieved successfully',
+    type: [TemplateSummaryDto],
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during templates retrieval',
   })
-  async findAll() {
+  async findAll(): Promise<TemplateSummaryDto[]> {
     try {
-      const results = await this.templatesService.findAll();
-      return results;
+      return await this.templatesService.findAll();
     } catch (error) {
       this.logger.error(
         'Failed to retrieve workflow templates',
@@ -97,21 +113,24 @@ export class TemplatesController {
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Get template by ID',
-    description: 'Retrieves a specific workflow template by its ID.',
+    summary: 'Get workflow template by ID',
+    description:
+      'Retrieves a specific workflow template by its ID with complete details including all checklists and their items.',
   })
   @ApiParam({
     name: 'id',
-    description: 'Template ID',
+    description: 'Unique identifier of the workflow template',
     type: 'string',
+    format: 'uuid',
     example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   })
   @ApiResponse({
     status: 200,
-    description: 'Template retrieved successfully',
+    description: 'Workflow template retrieved successfully',
+    type: TemplateDetailDto,
   })
   @ApiNotFoundResponse({
-    description: 'Template not found',
+    description: 'Workflow template not found',
   })
   @ApiBadRequestResponse({
     description: 'Invalid template ID provided',
@@ -119,18 +138,21 @@ export class TemplatesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during template retrieval',
   })
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string): Promise<TemplateDetailDto> {
     try {
-      const result = this.templatesService.findOne(id);
-      return result;
+      return await this.templatesService.findOne(id);
     } catch (error) {
+      if (error instanceof TemplateNotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      if (error instanceof InvalidTemplateDataException) {
+        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      }
+
       this.logger.error(
         `Failed to retrieve template with ID: ${id}`,
         error instanceof Error ? error.stack : String(error),
       );
-      if (error instanceof HttpException) {
-        throw error;
-      }
       throw new HttpException(
         'Internal server error during template retrieval',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -140,26 +162,29 @@ export class TemplatesController {
 
   @Patch(':id')
   @ApiOperation({
-    summary: 'Update template by ID',
+    summary: 'Update workflow template by ID',
     description:
-      'Updates a specific workflow template with the provided configuration.',
+      'Updates a complete workflow template including all checklists and items. Replaces the entire template structure.',
   })
   @ApiParam({
     name: 'id',
-    description: 'Template ID',
+    description: 'Unique identifier of the workflow template',
     type: 'string',
+    format: 'uuid',
     example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   })
   @ApiBody({
-    type: UpdateTemplateDto,
-    description: 'Template configuration to update',
+    type: UpdateWorkflowTemplateDto,
+    description:
+      'Template configuration including checklists and items (ID not required in body)',
   })
   @ApiResponse({
     status: 200,
-    description: 'Template updated successfully',
+    description: 'Workflow template updated successfully',
+    type: UpdateTemplateResponseDto,
   })
   @ApiNotFoundResponse({
-    description: 'Template not found',
+    description: 'Workflow template not found',
   })
   @ApiBadRequestResponse({
     description: 'Invalid template ID or data provided',
@@ -167,21 +192,24 @@ export class TemplatesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during template update',
   })
-  update(
+  async update(
     @Param('id') id: string,
-    @Body() updateTemplateDto: UpdateTemplateDto,
-  ) {
+    @Body() updateTemplateDto: UpdateWorkflowTemplateDto,
+  ): Promise<UpdateTemplateResponseDto> {
     try {
-      const result = this.templatesService.update(id, updateTemplateDto);
-      return result;
+      return await this.templatesService.update(id, updateTemplateDto);
     } catch (error) {
+      if (error instanceof TemplateNotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      if (error instanceof InvalidTemplateDataException) {
+        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      }
+
       this.logger.error(
         `Failed to update template with ID: ${id}`,
         error instanceof Error ? error.stack : String(error),
       );
-      if (error instanceof HttpException) {
-        throw error;
-      }
       throw new HttpException(
         'Internal server error during template update',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -215,17 +243,22 @@ export class TemplatesController {
   })
   remove(@Param('id') id: string) {
     try {
-      const result = this.templatesService.remove(id);
-      this.logger.log(`Template deleted: ${id}`); // Solo para operaciones críticas como DELETE
-      return result;
+      return this.templatesService.remove(id);
     } catch (error) {
+      if (error instanceof TemplateNotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
+      if (error instanceof InvalidTemplateDataException) {
+        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      }
+      if (error instanceof TemplateInUseException) {
+        throw new HttpException(error.message, HttpStatus.CONFLICT);
+      }
+
       this.logger.error(
         `Failed to delete template with ID: ${id}`,
         error instanceof Error ? error.stack : String(error),
       );
-      if (error instanceof HttpException) {
-        throw error;
-      }
       throw new HttpException(
         'Internal server error during template deletion',
         HttpStatus.INTERNAL_SERVER_ERROR,
