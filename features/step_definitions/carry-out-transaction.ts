@@ -2,13 +2,14 @@ import { Given, Then, When } from '@cucumber/cucumber';
 import { faker } from '@faker-js/faker';
 import { expect } from 'expect';
 import { mapToTransactionType } from '../support/transaction-type-mapper';
+import { mapToItemStatus } from '../support/item-status-mapper';
 import { getRepositories, getServices } from '../support/database-helper';
 import { Transaction } from '../../src/transactions/entities/transaction.entity';
 import { Property } from '../../src/properties/entities/property.entity';
 import { User } from '../../src/users/entities/user.entity';
 import { Workflow } from '../../src/transactions/entities/workflow.entity';
 import { Checklist } from '../../src/transactions/entities/checklist.entity';
-import { Item, ItemStatus } from '../../src/transactions/entities/item.entity';
+import { Item } from '../../src/transactions/entities/item.entity';
 import { TransactionType } from '../../src/common/enums/transaction-type.enum';
 
 export interface TestWorld {
@@ -45,6 +46,7 @@ Given(
     await profileService.assignAgentProfile(this.user.auth0Id, {
       esign_name: agentName,
       esign_initials: agentName.charAt(0).toUpperCase(),
+      phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
       license_number: faker.string.alphanumeric(10),
     });
 
@@ -243,7 +245,8 @@ When(
       this.checklist as Checklist,
       newItem,
     );
-    expect(result.saved).toBe(true);
+    expect(result).toBeDefined();
+    expect(result.description).toBe(newItem);
 
     // Reload checklist with updated items
     const updatedChecklist = await checklistRepository.findOne({
@@ -286,8 +289,9 @@ Given(
       itemName,
     );
 
-    expect(result.saved).toBe(true);
-    this.item = result.item;
+    expect(result).toBeDefined();
+    expect(result.description).toBe(itemName);
+    this.item = result;
 
     // Reload checklist with items to get updated data
     const updatedChecklist = await checklistRepository.findOne({
@@ -305,11 +309,10 @@ When(
   async function (state: string) {
     const { itemService } = getServices();
 
-    const result = await itemService.checkItemAs(
-      this.item as Item,
-      state as ItemStatus,
-    );
-    expect(result).toBe(true);
+    const enumStatus = mapToItemStatus(state);
+    const result = await itemService.checkItemAs(this.item as Item, enumStatus);
+    expect(result).toBeDefined();
+    expect(result.status).toBe(enumStatus);
   },
 );
 
@@ -347,6 +350,7 @@ async function setUpWorkflow(
   await profileService.assignAgentProfile(this.user.auth0Id, {
     esign_name: faker.person.fullName(),
     esign_initials: faker.person.firstName().charAt(0).toUpperCase(),
+    phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
     license_number: faker.string.alphanumeric(10),
   });
 

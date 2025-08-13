@@ -4,6 +4,7 @@ import { Property } from '../../src/properties/entities/property.entity';
 import { User } from '../../src/users/entities/user.entity';
 import { Profile } from '../../src/users/entities/profile.entity';
 import { RealEstateAgentProfile } from '../../src/users/entities/real-estate-agent-profile.entity';
+import { Brokerage } from '../../src/users/entities/brokerage.entity';
 import { TransactionsService } from '../../src/transactions/services/transactions.service';
 import { ChecklistService } from '../../src/transactions/services/checklist.service';
 import { TemplatesService } from '../../src/templates/services/templates.service';
@@ -14,9 +15,10 @@ import { Workflow } from '../../src/transactions/entities/workflow.entity';
 import { Checklist } from '../../src/transactions/entities/checklist.entity';
 import { Item } from '../../src/transactions/entities/item.entity';
 import { ItemService } from '../../src/transactions/services/item.service';
-import { UsersService } from '../../src/users/users.service';
+import { TransactionAuthorizationService } from '../../src/transactions/services/transaction-authorization.service';
+import { UsersService } from '../../src/users/services/users.service';
 import { ClientProfile } from '../../src/users/entities/client-profile.entity';
-import { ProfilesService } from '../../src/users/profiles.service';
+import { ProfilesService } from '../../src/users/services/profiles.service';
 import { PropertiesService } from '../../src/properties/properties.service';
 import { WorkflowAnalyticsService } from '../../src/transactions/workflow-analytics.service';
 import { ChecklistTemplateService } from '../../src/templates/services/checklist-template.service';
@@ -33,6 +35,7 @@ export function getRepositories() {
       RealEstateAgentProfile,
     ),
     clientProfileRepository: dataSource.getRepository(ClientProfile),
+    brokerageRepository: dataSource.getRepository(Brokerage),
     transactionRepository: dataSource.getRepository(Transaction),
     workflowTemplateRepository: dataSource.getRepository(WorkflowTemplate),
     checklistTemplateRepository: dataSource.getRepository(ChecklistTemplate),
@@ -51,6 +54,7 @@ export function getServices() {
     repositories.userRepository,
     repositories.realEstateAgentProfileRepository,
     repositories.clientProfileRepository,
+    repositories.brokerageRepository,
     userService,
   );
   const propertyService = new PropertiesService(
@@ -78,7 +82,16 @@ export function getServices() {
   const checklistService = new ChecklistService(
     repositories.checklistRepository,
   );
-  const itemService = new ItemService(repositories.itemRepository);
+
+  const transactionAuthorizationService = new TransactionAuthorizationService(
+    repositories.transactionRepository,
+    userService,
+  );
+
+  const itemService = new ItemService(
+    repositories.itemRepository,
+    transactionAuthorizationService,
+  );
 
   return {
     templatesService,

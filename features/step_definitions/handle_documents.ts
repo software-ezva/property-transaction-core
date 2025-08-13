@@ -27,6 +27,7 @@ Given(
     await profileService.assignAgentProfile(this.user.auth0Id, {
       esign_name: agentName,
       esign_initials: agentName.charAt(0).toUpperCase(),
+      phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
       license_number: faker.string.alphanumeric(10),
     });
     expect(true).toBe(true);
