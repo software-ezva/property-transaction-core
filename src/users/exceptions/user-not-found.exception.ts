@@ -1,8 +1,8 @@
-import { BaseNotFoundException } from '../../common/exceptions/base';
-
-export class UserNotFoundException extends BaseNotFoundException {
-  constructor(userId: string) {
-    super('User', userId);
+export class UserNotFoundException extends Error {
+  constructor(identifier?: string, type: 'id' | 'auth0Id' = 'id') {
+    super(
+      `User with ${type === 'id' ? 'ID' : 'Auth0 ID'} ${identifier} not found`,
+    );
     this.name = 'UserNotFoundException';
   }
 }
