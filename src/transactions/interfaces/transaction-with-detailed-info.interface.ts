@@ -9,6 +9,7 @@ export interface TransactionWithDetailedInfo {
   propertyBathrooms: number | null;
   clientName: string | null;
   clientEmail: string | null;
+  clientPhoneNumber: string | null;
   totalWorkflowItems: number;
   completedWorkflowItems: number;
   nextIncompleteItemDate: Date | null;

@@ -12,12 +12,12 @@ import { WorkflowAnalyticsService } from '../workflow-analytics.service';
 import { TemplatesService } from '../../templates/services/templates.service';
 import { TransactionType, TransactionStatus } from '../../common/enums';
 import {
-  UserIsNotRealEstateAgentException,
   WorkflowTemplateDoesNotExistException,
   DuplicateTransactionException,
   TransactionNotFoundException,
-} from '../../common/exceptions';
-import { UsersService } from '../../users/users.service';
+} from '../expections';
+import { UserIsNotRealEstateAgentException } from '../../users/exceptions';
+import { UsersService } from '../../users/services/users.service';
 import { PropertiesService } from '../../properties/properties.service';
 
 @Injectable()
@@ -184,6 +184,7 @@ export class TransactionsService {
         propertyBathrooms: transaction.property?.bathrooms || null,
         clientName: transaction.client?.fullName || null,
         clientEmail: transaction.client?.email || null,
+        clientPhoneNumber: transaction.client?.profile?.phoneNumber || null,
         totalWorkflowItems:
           this.workflowAnalyticsService.calculateTotalWorkflowItems(
             transaction,

@@ -24,24 +24,24 @@ import {
   ApiUnauthorizedResponse,
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
-import { TransactionsService } from './services/transactions.service';
-import { TemplatesService } from '../templates/services/templates.service';
-import { UsersService } from '../users/users.service';
-import { CreateTransactionDto } from './dto/create-transaction.dto';
-import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { TransactionSummaryDto } from './dto/transaction-summary.dto';
-import { TransactionDetailDto } from './dto/transaction-detail.dto';
-import { TransactionWithSummaryInfo } from './interfaces/transaction-with-summary-info.interface';
-import { TransactionWithDetailedInfo } from './interfaces/transaction-with-detailed-info.interface';
-import { AuthenticatedRequest } from '../common/interfaces';
+import { TransactionsService } from '../services/transactions.service';
+import { TemplatesService } from '../../templates/services/templates.service';
+import { UsersService } from '../../users/services/users.service';
+import { CreateTransactionDto } from '../dto/create-transaction.dto';
+import { UpdateTransactionDto } from '../dto/update-transaction.dto';
+import { TransactionSummaryDto } from '../dto/transaction-summary.dto';
+import { TransactionDetailDto } from '../dto/transaction-detail.dto';
+import { TransactionWithSummaryInfo } from '../interfaces/transaction-with-summary-info.interface';
+import { TransactionWithDetailedInfo } from '../interfaces/transaction-with-detailed-info.interface';
+import { AuthenticatedRequest } from '../../common/interfaces';
 import {
   InvalidTransactionDataException,
   DuplicateTransactionException,
-  PropertyNotFoundException,
-  UserNotFoundException,
   TransactionNotFoundException,
-} from '../common/exceptions';
-import { CreateTransactionResponseDto } from './dto/create-transaction-response.dto';
+} from '../expections';
+import { PropertyNotFoundException } from '../../common/exceptions';
+import { UserNotFoundException } from '../../users/exceptions';
+import { CreateTransactionResponseDto } from '../dto/create-transaction-response.dto';
 
 @Controller('transactions')
 @ApiTags('transactions')
@@ -260,6 +260,7 @@ export class TransactionsController {
         propertyBathrooms: result.propertyBathrooms ?? null,
         clientName: result.clientName ?? null,
         clientEmail: result.clientEmail ?? null,
+        clientPhoneNumber: result.clientPhoneNumber ?? null,
       };
     } catch (error) {
       this.logger.error(

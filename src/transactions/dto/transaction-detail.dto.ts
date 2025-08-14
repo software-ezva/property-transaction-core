@@ -113,4 +113,11 @@ export class TransactionDetailDto {
     nullable: true,
   })
   clientEmail: string | null;
+
+  @ApiProperty({
+    description: 'Phone number of the client',
+    example: '+15551234567',
+    nullable: true,
+  })
+  clientPhoneNumber: string | null;
 }

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Transaction } from './entities/transaction.entity';
-import { ItemStatus } from './entities/item.entity';
+import { ItemStatus } from '../common/enums';
 
 @Injectable()
 export class WorkflowAnalyticsService {
@@ -36,9 +36,9 @@ export class WorkflowAnalyticsService {
       if (!checklist.items) continue;
 
       for (const item of checklist.items) {
-        // Solo considerar items incompletos
+        // Only incomplete items
         if (item.status !== ItemStatus.COMPLETED) {
-          // Solo considerar items que tienen fecha de vencimiento
+          // Only item with closing date
           if (item.expectClosingDate) {
             const itemDateStr =
               typeof item.expectClosingDate === 'string'
