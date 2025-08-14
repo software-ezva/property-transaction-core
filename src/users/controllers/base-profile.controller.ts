@@ -4,8 +4,8 @@ import {
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-import { ProfilesService } from './profiles.service';
-import { Auth0User } from './interfaces/auth0-user.interface';
+import { ProfilesService } from '../services/profiles.service';
+import { Auth0User } from '../interfaces/auth0-user.interface';
 
 interface AuthenticatedRequest extends Request {
   user: Auth0User;

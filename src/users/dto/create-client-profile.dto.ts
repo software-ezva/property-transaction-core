@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsDateString, Matches } from 'class-validator';
 
 export class CreateClientProfileDto {
   @ApiProperty({ example: 'Jane Doe', description: 'Name for e-signature' })
@@ -9,6 +9,17 @@ export class CreateClientProfileDto {
   @ApiProperty({ example: 'JD', description: 'Initials for e-signature' })
   @IsString()
   esign_initials: string;
+
+  @ApiProperty({
+    example: '+15551234567',
+    description: 'Phone number (US format)',
+  })
+  @IsString()
+  @Matches(/^(\+?1)?[2-9][0-9]{2}[2-9][0-9]{2}[0-9]{4}$/, {
+    message:
+      'Phone number must be a valid US phone number (10 digits, area code cannot start with 0 or 1)',
+  })
+  phone_number: string;
 
   @ApiProperty({ example: '1990-01-01', description: 'Date of birth' })
   @IsDateString()

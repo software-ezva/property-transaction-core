@@ -7,13 +7,13 @@ import {
   ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-import { User } from './entities/user.entity';
+import { User } from '../entities/user.entity';
 import { BaseProfileController } from './base-profile.controller';
-import { ProfilesService } from './profiles.service';
-import { CreateClientProfileDto } from './dto/create-client-profile.dto';
-import { ProfileResponseDto } from './dto/profile-response.dto';
-import { SimpleUserResponseDto } from './dto/simple-user-response.dto';
-import { Auth0User } from './interfaces/auth0-user.interface';
+import { ProfilesService } from '../services/profiles.service';
+import { CreateClientProfileDto } from '../dto/create-client-profile.dto';
+import { ProfileResponseDto } from '../dto/profile-response.dto';
+import { SimpleUserResponseDto } from '../dto/simple-user-response.dto';
+import { Auth0User } from '../interfaces/auth0-user.interface';
 
 interface AuthenticatedRequest extends Request {
   user: Auth0User;

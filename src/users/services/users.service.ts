@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SyncUserResponseDto } from './dto/sync-user-response.dto';
-import { User } from './entities/user.entity';
-import { Auth0User } from './interfaces/auth0-user.interface';
+import { SyncUserResponseDto } from '../dto/sync-user-response.dto';
+import { User } from '../entities/user.entity';
+import { Auth0User } from '../interfaces/auth0-user.interface';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserNotFoundException } from '../common/exceptions/user-not-found.exception';
+import { UserNotFoundException } from '../exceptions/user-not-found.exception';
 
 @Injectable()
 export class UsersService {

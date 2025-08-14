@@ -45,6 +45,14 @@ export abstract class Profile {
   })
   esignInitials: string;
 
+  @Column({
+    type: 'varchar',
+    length: 15,
+    nullable: false,
+    comment: 'Phone number (US format)',
+  })
+  phoneNumber: string;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 

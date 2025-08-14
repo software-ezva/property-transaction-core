@@ -17,10 +17,10 @@ import {
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-import { UsersService } from './users.service';
-import { Auth0User } from './interfaces/auth0-user.interface';
-import { SyncUserResponseDto } from './dto/sync-user-response.dto';
-import { SyncUserRequestDto } from './dto/sync-user-request.dto';
+import { UsersService } from '../services/users.service';
+import { Auth0User } from '../interfaces/auth0-user.interface';
+import { SyncUserResponseDto } from '../dto/sync-user-response.dto';
+import { SyncUserRequestDto } from '../dto/sync-user-request.dto';
 
 interface AuthenticatedRequest extends Request {
   user: Auth0User;
