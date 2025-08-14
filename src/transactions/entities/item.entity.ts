@@ -6,12 +6,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Checklist } from './checklist.entity';
-
-export enum ItemStatus {
-  NOT_STARTED = 'not_started',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
-}
+import { ItemStatus } from '../../common/enums';
 
 @Entity('items')
 export class Item {
@@ -38,7 +33,7 @@ export class Item {
     default: () => 'CURRENT_DATE',
     nullable: true,
   })
-  expectClosingDate?: Date;
+  expectClosingDate?: Date | null;
 
   // Relaciones
   @ManyToOne(() => Checklist, (checklist) => checklist.items)
