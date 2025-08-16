@@ -19,6 +19,7 @@ import {
 import { UserIsNotRealEstateAgentException } from '../../users/exceptions';
 import { UsersService } from '../../users/services/users.service';
 import { PropertiesService } from '../../properties/properties.service';
+import { WorkflowTemplate } from 'src/templates/entities/workflow-template.entity';
 
 @Injectable()
 export class TransactionsService {
@@ -39,19 +40,26 @@ export class TransactionsService {
     createTransactionDto: CreateTransactionDto,
     agentId: string,
   ): Promise<Transaction> {
-    const { propertyId, clientId, transactionType, additionalNotes } =
+    const { propertyId, clientId, workflowTemplateId, additionalNotes } =
       createTransactionDto;
     try {
       // Fetch agent, client(optional) and property
       const agent = await this.userService.getUserByAuth0Id(agentId);
       const property = await this.propertyService.findOne(propertyId);
+      const workflowTemplate =
+        await this.templatesService.findOne(workflowTemplateId);
       const client = clientId
         ? await this.userService.getUserByAuth0Id(clientId)
         : null;
 
       // Check for duplicate transaction
       if (
-        await this.existsATransaction(property, agent, client, transactionType)
+        await this.existsATransaction(
+          property,
+          agent,
+          client,
+          workflowTemplate.transactionType,
+        )
       ) {
         this.logger.warn('Duplicate transaction found');
         throw new DuplicateTransactionException(
@@ -61,14 +69,14 @@ export class TransactionsService {
 
       // Create and save transaction
       const transaction = await this.createAndSaveTransaction(
-        transactionType,
+        workflowTemplate.transactionType,
         property,
         agent,
         client,
         additionalNotes,
       );
 
-      await this.chooseWorkflowTemplate(transactionType, transaction);
+      await this.chooseWorkflowTemplate(workflowTemplate, transaction);
 
       this.logger.log(
         `Transaction created successfully with ID: ${transaction.transactionId}`,
@@ -281,18 +289,14 @@ export class TransactionsService {
   }
 
   async chooseWorkflowTemplate(
-    transactionType: TransactionType,
+    workflowTemplate: WorkflowTemplate,
     transactionObject: Transaction,
   ): Promise<{ success: boolean; transaction: Transaction }> {
     try {
       return await this.dataSource.transaction(async (manager) => {
-        // Get the workflow template with relations
-        const workflowTemplate =
-          await this.templatesService.getWorkflowTemplate(transactionType);
-
         if (!workflowTemplate) {
           this.logger.warn(
-            `Workflow template does not exist for transaction type: ${transactionType}`,
+            `Workflow template does not exist for transaction type: ${transactionObject.transactionType}`,
           );
           throw new WorkflowTemplateDoesNotExistException();
         }
@@ -304,7 +308,6 @@ export class TransactionsService {
           );
 
         transactionObject.workflow = clonedWorkflow;
-        transactionObject.transactionType = transactionType;
 
         const updatedTransaction = await manager.save(
           Transaction,

@@ -6,7 +6,6 @@ import { CreateTemplateResponseDto } from '../dto/create-template-response.dto';
 import { UpdateWorkflowTemplateDto } from '../dto/update-workflow-template-complete.dto';
 import { UpdateTemplateResponseDto } from '../dto/update-template-response.dto';
 import { TemplateSummaryDto } from '../dto/template-summary.dto';
-import { TemplateDetailDto } from '../dto/template-detail.dto';
 import { WorkflowTemplate } from '../entities/workflow-template.entity';
 import { ChecklistTemplate } from '../entities/checklist-template.entity';
 import { Workflow } from '../../transactions/entities/workflow.entity';
@@ -107,7 +106,7 @@ export class TemplatesService {
     return transformedTemplates;
   }
 
-  async findOne(id: string): Promise<TemplateDetailDto> {
+  async findOne(id: string): Promise<WorkflowTemplate> {
     if (!id?.trim()) {
       throw new InvalidTemplateDataException('Template ID is required');
     }

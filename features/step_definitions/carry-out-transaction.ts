@@ -11,6 +11,7 @@ import { Workflow } from '../../src/transactions/entities/workflow.entity';
 import { Checklist } from '../../src/transactions/entities/checklist.entity';
 import { Item } from '../../src/transactions/entities/item.entity';
 import { TransactionType } from '../../src/common/enums/transaction-type.enum';
+import { WorkflowTemplate } from 'src/templates/entities/workflow-template.entity';
 
 export interface TestWorld {
   user?: User;
@@ -18,6 +19,7 @@ export interface TestWorld {
   transaction?: Transaction;
   workflow?: Workflow;
   checklists?: Checklist[];
+  workflowTemplate?: WorkflowTemplate;
   checklist?: Checklist;
   items?: Item[];
   item?: Item;
@@ -83,11 +85,11 @@ Given(
 
 When(
   'the real estate agent chooses a workflow template of {string} for the transaction',
-  async function (this: TestWorld, transactionType: string) {
+  async function (this: TestWorld, transactionTemplate: string) {
     const { transactionService } = getServices();
-    await setUpTemplateWorkflow.call(this, transactionType);
+    await setUpTemplateWorkflow.call(this, transactionTemplate);
     const result = await transactionService.chooseWorkflowTemplate(
-      mapToTransactionType(transactionType),
+      this.workflowTemplate as WorkflowTemplate,
       this.transaction as Transaction,
     );
     this.transaction = result.transaction;
@@ -433,6 +435,13 @@ async function setUpTemplateWorkflow(
   const createdChecklists =
     checklistTemplateRepository.create(checklistTemplates);
   await checklistTemplateRepository.save(createdChecklists);
+
+  const foundTemplate = await workflowTemplateRepository.findOne({
+    where: { id: savedWorkflowTemplate.id },
+    relations: ['checklistTemplates', 'checklistTemplates.items'],
+  });
+
+  this.workflowTemplate = foundTemplate ?? undefined;
 
   console.log(`✅ Created workflow template for ${transactionTypeString}`);
 }

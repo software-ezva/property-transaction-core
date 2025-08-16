@@ -1,12 +1,5 @@
-import { TransactionType } from '../../common/enums';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsOptional,
-  IsString,
-  MaxLength,
-  IsEnum,
-  IsUUID,
-} from 'class-validator';
+import { IsOptional, IsString, MaxLength, IsUUID } from 'class-validator';
 
 export class CreateTransactionDto {
   @ApiProperty({
@@ -16,6 +9,9 @@ export class CreateTransactionDto {
   @IsUUID(4, { message: 'Property ID must be a valid UUID' })
   propertyId: string;
 
+  @IsUUID(4, { message: 'Workflow Template ID must be a valid UUID' })
+  workflowTemplateId: string;
+
   @ApiPropertyOptional({
     description: 'The ID of the client user (optional)',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -23,17 +19,6 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsUUID(4, { message: 'Client ID must be a valid UUID' })
   clientId?: string;
-
-  @ApiProperty({
-    description:
-      'The type of transaction that determines the workflow template',
-    enum: TransactionType,
-    example: 'Purchase',
-  })
-  @IsEnum(TransactionType, {
-    message: `Transaction type must be one of: ${Object.values(TransactionType).join(', ')}`,
-  })
-  transactionType: TransactionType;
 
   @ApiPropertyOptional({
     description: 'Additional notes or comments about the transaction',
