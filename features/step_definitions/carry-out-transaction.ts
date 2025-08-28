@@ -78,7 +78,6 @@ Given(
       null,
       this.transaction.transactionType,
     );
-    console.log('value', hasTransaction);
     expect(hasTransaction).toBe(true);
   },
 );

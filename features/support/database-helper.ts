@@ -23,6 +23,10 @@ import { PropertiesService } from '../../src/properties/properties.service';
 import { WorkflowAnalyticsService } from '../../src/transactions/workflow-analytics.service';
 import { ChecklistTemplateService } from '../../src/templates/services/checklist-template.service';
 import { ItemTemplateService } from '../../src/templates/services/item-template.service';
+import { DocumentTemplate } from '../../src/documents/entities/document-template.entity';
+import { Document } from '../../src/documents/entities/document.entity';
+import { DocumentTemplateService } from '../../src/documents/services/document-templates.service';
+import { DocumentsService } from '../../src/documents/services/documents.service';
 
 // Lazy initialization functions
 export function getRepositories() {
@@ -43,6 +47,8 @@ export function getRepositories() {
     workflowRepository: dataSource.getRepository(Workflow),
     checklistRepository: dataSource.getRepository(Checklist),
     itemRepository: dataSource.getRepository(Item),
+    documentRepository: dataSource.getRepository(Document),
+    documentTemplateRepository: dataSource.getRepository(DocumentTemplate),
   };
 }
 
@@ -50,6 +56,10 @@ export function getServices() {
   const dataSource = getDataSource();
   const repositories = getRepositories();
   const userService = new UsersService(repositories.userRepository);
+  const transactionAuthorizationService = new TransactionAuthorizationService(
+    repositories.transactionRepository,
+    userService,
+  );
   const profileService = new ProfilesService(
     repositories.userRepository,
     repositories.realEstateAgentProfileRepository,
@@ -76,6 +86,7 @@ export function getServices() {
     userService,
     propertyService,
     workflowAnalyticsService,
+    transactionAuthorizationService,
     dataSource,
   );
 
@@ -83,17 +94,27 @@ export function getServices() {
     repositories.checklistRepository,
   );
 
-  const transactionAuthorizationService = new TransactionAuthorizationService(
-    repositories.transactionRepository,
-    userService,
-  );
-
   const itemService = new ItemService(
     repositories.itemRepository,
     transactionAuthorizationService,
   );
+  const mockStorageService = {
+    duplicateFile: async (originalUrl: string) =>
+      Promise.resolve(`${originalUrl}-${Date.now()}.pdf`),
+  };
+  const documentService = new DocumentsService(
+    repositories.documentRepository,
+    transactionAuthorizationService,
+    mockStorageService,
+  );
+  const documentTemplateService = new DocumentTemplateService(
+    repositories.documentTemplateRepository,
+    userService,
+  );
 
   return {
+    documentTemplateService,
+    documentService,
     templatesService,
     transactionService,
     checklistService,
