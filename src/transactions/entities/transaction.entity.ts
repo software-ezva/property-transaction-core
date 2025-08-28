@@ -5,12 +5,15 @@ import {
   ManyToOne,
   OneToOne,
   JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 import { Property } from '../../properties/entities/property.entity';
 import { User } from '../../users/entities/user.entity';
 import { Workflow } from './workflow.entity';
 import { TransactionType, TransactionStatus } from '../../common/enums';
-
+import { Document } from '../../documents/entities/document.entity';
 @Entity('transactions')
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
@@ -32,10 +35,10 @@ export class Transaction {
   @Column({ type: 'varchar', length: 500, nullable: true })
   additionalNotes?: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn()
   updatedAt: Date;
 
   @ManyToOne(() => Property, (property) => property.transactions, {
@@ -62,4 +65,7 @@ export class Transaction {
     onDelete: 'CASCADE',
   })
   workflow: Workflow;
+
+  @OneToMany(() => Document, (document) => document.transaction)
+  documents: Document[];
 }

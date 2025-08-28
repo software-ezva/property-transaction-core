@@ -230,18 +230,19 @@ export class TransactionsController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during transaction retrieval',
   })
-  async findOne(@Param('id') id: string): Promise<TransactionDetailDto> {
+  async findOne(
+    @Param('id') transactionId: string,
+    @Request() req: AuthenticatedRequest,
+  ): Promise<TransactionDetailDto> {
     try {
-      if (!id || !id.trim()) {
-        throw new HttpException(
-          'Invalid transaction ID',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+      // Extract agent from JWT token
+      const userId = req.user.sub;
 
       const result: TransactionWithDetailedInfo =
-        await this.transactionsService.findOneWithDetails(id);
-      this.logger.log(`Transaction with ID ${id} retrieved successfully`);
+        await this.transactionsService.findOneWithDetails(
+          transactionId,
+          userId,
+        );
 
       return {
         transactionId: result.transaction?.transactionId ?? null,
@@ -264,7 +265,7 @@ export class TransactionsController {
       };
     } catch (error) {
       this.logger.error(
-        `Failed to retrieve transaction with ID: ${id}`,
+        `Failed to retrieve transaction with ID: ${transactionId}`,
         error instanceof Error ? error.stack : String(error),
       );
       if (error instanceof HttpException) {
@@ -309,23 +310,10 @@ export class TransactionsController {
     @Param('id') id: string,
     @Body() updateTransactionDto: UpdateTransactionDto,
   ) {
-    this.logger.log(`Updating transaction with ID: ${id}`);
-
     try {
-      if (!id || !id.trim()) {
-        throw new HttpException(
-          'Invalid transaction ID',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
       const result = this.transactionsService.update(id, updateTransactionDto);
       return result;
     } catch (error) {
-      this.logger.error(
-        `Failed to update transaction with ID: ${id}`,
-        error instanceof Error ? error.stack : String(error),
-      );
       if (error instanceof HttpException) {
         throw error;
       }

@@ -5,6 +5,7 @@ import { Auth0User } from '../interfaces/auth0-user.interface';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserNotFoundException } from '../exceptions/user-not-found.exception';
+import { UserIsNotRealEstateAgentException } from '../exceptions';
 
 @Injectable()
 export class UsersService {
@@ -66,14 +67,6 @@ export class UsersService {
     return new SyncUserResponseDto(user, isNewUser);
   }
 
-  // Find user by Auth0 ID
-  async findByAuth0Id(auth0Id: string): Promise<User | null> {
-    return await this.userRepository.findOne({
-      where: { auth0Id },
-      relations: ['profile'],
-    });
-  }
-
   async create(
     auth0Id: string,
     email: string,
@@ -103,5 +96,14 @@ export class UsersService {
       throw new UserNotFoundException();
     }
     return user;
+  }
+
+  async verifyUserIsRealEstateAgent(userId: string): Promise<boolean> {
+    const agent = await this.getUserByAuth0Id(userId);
+    if (!agent.isRealEstateAgent()) {
+      this.logger.warn(`User with ID ${userId} is not a real estate agent`);
+      throw new UserIsNotRealEstateAgentException();
+    }
+    return true;
   }
 }

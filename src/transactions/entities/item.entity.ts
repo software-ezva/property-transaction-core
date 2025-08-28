@@ -4,6 +4,8 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Checklist } from './checklist.entity';
 import { ItemStatus } from '../../common/enums';
@@ -25,8 +27,12 @@ export class Item {
     default: ItemStatus.NOT_STARTED,
   })
   status: ItemStatus;
-  @Column({ type: 'date', default: () => 'CURRENT_DATE' })
+
+  @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @Column({
     type: 'date',

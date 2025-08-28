@@ -20,6 +20,7 @@ import { UserIsNotRealEstateAgentException } from '../../users/exceptions';
 import { UsersService } from '../../users/services/users.service';
 import { PropertiesService } from '../../properties/properties.service';
 import { WorkflowTemplate } from 'src/templates/entities/workflow-template.entity';
+import { TransactionAuthorizationService } from './transaction-authorization.service';
 
 @Injectable()
 export class TransactionsService {
@@ -33,6 +34,7 @@ export class TransactionsService {
     private readonly userService: UsersService,
     private readonly propertyService: PropertiesService,
     private readonly workflowAnalyticsService: WorkflowAnalyticsService,
+    private readonly transactionAuthorizationService: TransactionAuthorizationService,
     private dataSource: DataSource,
   ) {}
 
@@ -45,6 +47,10 @@ export class TransactionsService {
     try {
       // Fetch agent, client(optional) and property
       const agent = await this.userService.getUserByAuth0Id(agentId);
+      if (!agent.isRealEstateAgent()) {
+        this.logger.warn(`User with ID ${agentId} is not a real estate agent`);
+        throw new UserIsNotRealEstateAgentException();
+      }
       const property = await this.propertyService.findOne(propertyId);
       const workflowTemplate =
         await this.templatesService.findOne(workflowTemplateId);
@@ -131,91 +137,83 @@ export class TransactionsService {
     }));
   }
 
-  async findOne(id: string): Promise<Transaction> {
-    try {
-      const transaction = await this.transactionRepository.findOne({
-        where: { transactionId: id },
-        relations: [
-          'property',
-          'agent',
-          'client',
-          'workflow',
-          'workflow.checklists',
-          'workflow.checklists.items',
-        ],
-      });
+  async findOne(transactionId: string): Promise<Transaction> {
+    const transaction = await this.transactionRepository.findOne({
+      where: { transactionId: transactionId },
+      relations: [
+        'property',
+        'agent',
+        'client',
+        'workflow',
+        'workflow.checklists',
+        'workflow.checklists.items',
+      ],
+    });
 
-      if (!transaction) {
-        this.logger.warn(`Transaction with ID ${id} not found`);
-        throw new TransactionNotFoundException(id);
-      }
-
-      this.logger.log(`Transaction with ID ${id} retrieved successfully`);
-      return transaction;
-    } catch (error) {
-      this.logger.error(
-        `Failed to retrieve transaction with ID: ${id}`,
-        error instanceof Error ? error.stack : String(error),
-      );
-      throw error;
+    if (!transaction) {
+      this.logger.warn(`Transaction with ID ${transactionId} not found`);
+      throw new TransactionNotFoundException(transactionId);
     }
+
+    this.logger.log(
+      `Transaction with ID ${transactionId} retrieved successfully`,
+    );
+    return transaction;
   }
 
-  async findOneWithDetails(id: string): Promise<TransactionWithDetailedInfo> {
-    try {
-      const transaction = await this.transactionRepository.findOne({
-        where: { transactionId: id },
-        relations: [
-          'property',
-          'agent',
-          'agent.profile',
-          'client',
-          'client.profile',
-          'workflow',
-          'workflow.checklists',
-          'workflow.checklists.items',
-        ],
-      });
+  async findOneWithDetails(
+    transactionId: string,
+    userId: string,
+  ): Promise<TransactionWithDetailedInfo> {
+    // First verify that the user has access to this transaction
+    await this.transactionAuthorizationService.verifyUserCanAccessTransaction(
+      transactionId,
+      userId,
+    );
+    const transaction = await this.transactionRepository.findOne({
+      where: { transactionId },
+      relations: [
+        'property',
+        'agent',
+        'agent.profile',
+        'client',
+        'client.profile',
+        'workflow',
+        'workflow.checklists',
+        'workflow.checklists.items',
+      ],
+    });
 
-      if (!transaction) {
-        this.logger.warn(`Transaction with ID ${id} not found`);
-        throw new TransactionNotFoundException(id);
-      }
-
-      // Build the detailed response following findAll pattern
-      const result = {
-        transaction,
-        propertyAddress: transaction.property?.address || null,
-        propertyPrice: transaction.property?.price || null,
-        propertySize: transaction.property?.size || null,
-        propertyBedrooms: transaction.property?.bedrooms || null,
-        propertyBathrooms: transaction.property?.bathrooms || null,
-        clientName: transaction.client?.fullName || null,
-        clientEmail: transaction.client?.email || null,
-        clientPhoneNumber: transaction.client?.profile?.phoneNumber || null,
-        totalWorkflowItems:
-          this.workflowAnalyticsService.calculateTotalWorkflowItems(
-            transaction,
-          ),
-        completedWorkflowItems:
-          this.workflowAnalyticsService.calculateCompletedWorkflowItems(
-            transaction,
-          ),
-        nextIncompleteItemDate:
-          this.workflowAnalyticsService.getNextIncompleteItemDate(transaction),
-      };
-
-      this.logger.log(
-        `Transaction details with ID ${id} retrieved successfully`,
-      );
-      return result;
-    } catch (error) {
-      this.logger.error(
-        `Failed to retrieve transaction details with ID: ${id}`,
-        error instanceof Error ? error.stack : String(error),
-      );
-      throw error;
+    if (!transaction) {
+      this.logger.warn(`Transaction with ID ${transactionId} not found`);
+      throw new TransactionNotFoundException(transactionId);
     }
+
+    // Build the detailed response following findAll pattern
+    const result = {
+      transaction,
+      propertyAddress: transaction.property?.address || null,
+      propertyPrice: transaction.property?.price || null,
+      propertySize: transaction.property?.size || null,
+      propertyBedrooms: transaction.property?.bedrooms || null,
+      propertyBathrooms: transaction.property?.bathrooms || null,
+      clientName: transaction.client?.fullName || null,
+      clientEmail: transaction.client?.email || null,
+      clientPhoneNumber: transaction.client?.profile?.phoneNumber || null,
+      totalWorkflowItems:
+        this.workflowAnalyticsService.calculateTotalWorkflowItems(transaction),
+      completedWorkflowItems:
+        this.workflowAnalyticsService.calculateCompletedWorkflowItems(
+          transaction,
+        ),
+      nextIncompleteItemDate:
+        this.workflowAnalyticsService.getNextIncompleteItemDate(transaction),
+    };
+
+    this.logger.log(
+      `Transaction details with ID ${transactionId} retrieved successfully`,
+    );
+    return result;
   }
 
   async update(

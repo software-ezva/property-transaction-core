@@ -5,6 +5,8 @@ import {
   OneToOne,
   OneToMany,
   JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Transaction } from './transaction.entity';
 import { Checklist } from './checklist.entity';
@@ -17,10 +19,10 @@ export class Workflow {
   @Column({ type: 'varchar', length: 100 })
   name: string;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn()
   updatedAt: Date;
 
   // Relaciones
