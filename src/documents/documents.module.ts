@@ -1,9 +1,21 @@
 import { Module } from '@nestjs/common';
-import { DocumentsService } from './documents.service';
-import { DocumentsController } from './documents.controller';
+import { DocumentsService } from './services/documents.service';
+import { DocumentsController } from './controllers/documents.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Document } from './entities/document.entity';
+import { TransactionsModule } from 'src/transactions/transactions.module';
+import { StorageService } from './services/storage.service';
+import { DocumentTemplateService } from './services/document-templates.service';
+import { DocumentTemplate } from './entities/document-template.entity';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
+  imports: [
+    TypeOrmModule.forFeature([Document, DocumentTemplate]),
+    TransactionsModule,
+    UsersModule,
+  ],
   controllers: [DocumentsController],
-  providers: [DocumentsService],
+  providers: [DocumentsService, StorageService, DocumentTemplateService],
 })
 export class DocumentsModule {}
