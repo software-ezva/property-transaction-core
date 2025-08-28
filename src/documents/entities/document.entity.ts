@@ -1,1 +1,47 @@
-export class Document {}
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+} from 'typeorm';
+import { DocumentCategory } from '../../common/enums';
+import { DocumentStatus } from '../../common/enums/';
+
+import { Transaction } from '../../transactions/entities/transaction.entity';
+@Entity('documents')
+export class Document {
+  @PrimaryGeneratedColumn('uuid')
+  documentId: string;
+
+  @Column()
+  title: string;
+
+  @Column({
+    type: 'enum',
+    enum: DocumentCategory,
+  })
+  category: DocumentCategory;
+
+  @Column()
+  url: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @ManyToOne(() => Transaction, (transaction) => transaction.documents, {
+    nullable: false,
+  })
+  transaction: Transaction;
+
+  @Column({
+    type: 'enum',
+    enum: DocumentStatus,
+    default: DocumentStatus.PENDING,
+  })
+  status: DocumentStatus;
+}
