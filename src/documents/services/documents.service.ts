@@ -61,8 +61,8 @@ export class DocumentsService {
       transaction.transactionId,
       user.auth0Id,
     );
-    const newUrl = await this.storageService.duplicateFile(
-      documentTemplate.url,
+    const newFilePath = await this.storageService.duplicateFile(
+      documentTemplate.filePath,
     );
 
     // If the user is authorized, proceed to add the document to the transaction
@@ -70,7 +70,7 @@ export class DocumentsService {
       transaction,
       title: documentTemplate.title,
       category: documentTemplate.category,
-      url: newUrl,
+      filePath: newFilePath,
       status,
     });
     return await this.documentRepository.save(document);
@@ -107,5 +107,41 @@ export class DocumentsService {
     // 3. Actualizar el estado del documento
     document.status = status;
     return await this.documentRepository.save(document);
+  }
+
+  async generateSecureUrl(
+    documentId: string,
+    userId: string,
+    expirationHours = 1,
+  ): Promise<string> {
+    const document = await this.documentRepository.findOne({
+      where: { documentId },
+      relations: ['transaction'],
+    });
+
+    if (!document) {
+      throw new DocumentNotFoundException(documentId);
+    }
+
+    // Verify user has access to this transaction
+    await this.transactionAuthorizationService.verifyUserCanAccessTransaction(
+      document.transaction.transactionId,
+      userId,
+    );
+
+    if (!document.filePath) {
+      throw new Error('Document has no associated file');
+    }
+
+    const secureUrl = this.storageService.generateSecureUrl(
+      document.filePath,
+      expirationHours,
+    );
+
+    this.logger.log(
+      `Generated secure URL for document ${documentId}, expires in ${expirationHours} hour(s)`,
+    );
+
+    return secureUrl;
   }
 }

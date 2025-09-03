@@ -10,8 +10,10 @@ import {
 import { DocumentsService } from '../services/documents.service';
 import { CreateDocumentDto } from '../dto/create-document.dto';
 import { UpdateDocumentDto } from '../dto/update-document.dto';
+import { ApiTags } from '@nestjs/swagger';
 
 @Controller('documents')
+@ApiTags('documents')
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
 

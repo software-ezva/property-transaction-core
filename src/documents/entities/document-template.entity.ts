@@ -21,7 +21,7 @@ export class DocumentTemplate {
   category: DocumentCategory;
 
   @Column()
-  url: string;
+  filePath: string;
 
   @CreateDateColumn()
   createdAt: Date;

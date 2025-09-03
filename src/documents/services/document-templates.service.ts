@@ -4,30 +4,121 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DocumentCategory } from 'src/common/enums';
 import { UsersService } from '../../users/services/users.service';
+import { StorageService } from './storage.service';
+import { CreateDocumentTemplateDto } from '../dto/create-document-template.dto';
+import { DocumentTemplateNotFoundException } from '../expections/document-template-not-found.exception';
+
+interface UploadedFile {
+  originalname: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
 
 @Injectable()
-export class DocumentTemplateService {
-  private readonly logger = new Logger(DocumentTemplateService.name);
+export class DocumentTemplatesService {
+  private readonly logger = new Logger(DocumentTemplatesService.name);
+
   constructor(
     @InjectRepository(DocumentTemplate)
     private documentTemplateRepository: Repository<DocumentTemplate>,
     private readonly userService: UsersService,
+    private readonly storageService: StorageService,
   ) {}
 
-  remove(id: number) {
-    return `This action removes a #${id} document`;
+  async create(
+    createDocumentTemplateDto: CreateDocumentTemplateDto,
+    file: UploadedFile,
+    userId: string,
+  ): Promise<{ template: DocumentTemplate; secureUrl: string }> {
+    // Verify user is a real estate agent
+    await this.userService.verifyUserIsRealEstateAgent(userId);
+
+    // Upload file to storage
+    const filePath = await this.storageService.storageTemplateDocument(
+      file,
+      createDocumentTemplateDto.category,
+      createDocumentTemplateDto.title,
+    );
+    // Use existing method to create the template
+    const documentTemplate = await this.uploadTemplateDocument(
+      createDocumentTemplateDto.title,
+      filePath,
+      createDocumentTemplateDto.category,
+    );
+
+    // Generate secure URL directly here
+    const secureUrl = this.storageService.generateSecureUrl(
+      documentTemplate.filePath,
+      1, // 1 hour expiration
+    );
+
+    this.logger.log(
+      `Document template created successfully with ID: ${documentTemplate.uuid}`,
+    );
+
+    return { template: documentTemplate, secureUrl };
+  }
+
+  async findAll(userId: string): Promise<DocumentTemplate[]> {
+    await this.userService.verifyUserIsRealEstateAgent(userId);
+
+    const templates = await this.documentTemplateRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+
+    this.logger.log(
+      `Retrieved ${templates.length} document templates for user: ${userId}`,
+    );
+    return templates;
+  }
+
+  async findOne(
+    uuid: string,
+    userId: string,
+  ): Promise<{ template: DocumentTemplate; secureUrl: string }> {
+    await this.userService.verifyUserIsRealEstateAgent(userId);
+
+    const template = await this.documentTemplateRepository.findOne({
+      where: { uuid },
+    });
+
+    if (!template) {
+      throw new DocumentTemplateNotFoundException(uuid);
+    }
+
+    const secureUrl = this.storageService.generateSecureUrl(
+      template.filePath,
+      1,
+    );
+
+    return { template, secureUrl };
+  }
+
+  async remove(uuid: string, userId: string): Promise<void> {
+    await this.userService.verifyUserIsRealEstateAgent(userId);
+
+    const { template } = await this.findOne(uuid, userId);
+
+    // Delete file from storage
+    await this.storageService.deleteFile(template.filePath);
+
+    // Delete template from database
+    await this.documentTemplateRepository.remove(template);
+
+    this.logger.log(
+      `Document template ${uuid} deleted successfully by user: ${userId}`,
+    );
   }
 
   async uploadTemplateDocument(
-    userId: string,
     templateName: string,
-    url: string,
+    filePath: string,
     category: DocumentCategory,
-  ) {
-    await this.userService.verifyUserIsRealEstateAgent(userId);
+  ): Promise<DocumentTemplate> {
     const newTemplate = this.documentTemplateRepository.create({
       category: category,
-      url,
+      filePath: filePath,
       title: templateName,
     });
     return this.documentTemplateRepository.save(newTemplate);

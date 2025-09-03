@@ -25,7 +25,7 @@ export class Document {
   category: DocumentCategory;
 
   @Column()
-  url: string;
+  filePath: string;
 
   @CreateDateColumn()
   createdAt: Date;
