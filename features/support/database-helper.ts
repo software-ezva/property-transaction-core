@@ -25,7 +25,7 @@ import { ChecklistTemplateService } from '../../src/templates/services/checklist
 import { ItemTemplateService } from '../../src/templates/services/item-template.service';
 import { DocumentTemplate } from '../../src/documents/entities/document-template.entity';
 import { Document } from '../../src/documents/entities/document.entity';
-import { DocumentTemplateService } from '../../src/documents/services/document-templates.service';
+import { DocumentTemplatesService } from '../../src/documents/services/document-templates.service';
 import { DocumentsService } from '../../src/documents/services/documents.service';
 
 // Lazy initialization functions
@@ -98,18 +98,55 @@ export function getServices() {
     repositories.itemRepository,
     transactionAuthorizationService,
   );
+
+  // Create a complete mock StorageService that implements all methods
   const mockStorageService = {
-    duplicateFile: async (originalUrl: string) =>
-      Promise.resolve(`${originalUrl}-${Date.now()}.pdf`),
+    logger: {
+      log: (message: string) => console.log(`[MockStorageService] ${message}`),
+      error: (message: string, stack?: string) =>
+        console.error(`[MockStorageService] ${message}`, stack),
+      warn: (message: string) =>
+        console.warn(`[MockStorageService] ${message}`),
+      debug: (message: string) =>
+        console.debug(`[MockStorageService] ${message}`),
+      verbose: (message: string) =>
+        console.log(`[MockStorageService] ${message}`),
+    },
+    duplicateFile: async (originalFilePath: string) => {
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 15);
+      const newPath = originalFilePath.replace(
+        '/templates/',
+        `/duplicates/${timestamp}_${randomId}_`,
+      );
+      return Promise.resolve(newPath);
+    },
+    uploadFile: async (file: { originalname: string }) => {
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 15);
+      const sanitizedFilename = file.originalname.replace(
+        /[^a-zA-Z0-9.-]/g,
+        '_',
+      );
+      const filePath = `templates/${timestamp}_${randomId}_${sanitizedFilename}`;
+      return Promise.resolve(filePath);
+    },
+    generateSecureUrl: (filePath: string, expirationHours = 1) => {
+      const expiry = Date.now() + expirationHours * 60 * 60 * 1000;
+      const mockSecureUrl = `https://firebasestorage.googleapis.com/v0/b/test-project.appspot.com/o/${encodeURIComponent(filePath)}?alt=media&token=test-token-${expiry}`;
+      return mockSecureUrl;
+    },
   };
+
   const documentService = new DocumentsService(
     repositories.documentRepository,
     transactionAuthorizationService,
-    mockStorageService,
+    mockStorageService as any,
   );
-  const documentTemplateService = new DocumentTemplateService(
+  const documentTemplateService = new DocumentTemplatesService(
     repositories.documentTemplateRepository,
     userService,
+    mockStorageService as any,
   );
 
   return {

@@ -6,20 +6,20 @@ Feature: Handle documents
   Scenario Outline: Upload document template
     Given a real estate agent named "<agent_name>"
     And a document template category "<category>" exists
-    When the real estate agent uploads a document template named "<template_name>" with url "<url>" to the category "<category>"
+    When the real estate agent uploads a document template named "<template_name>" with path "<path>" to the category "<category>"
     Then the document template "<template_name>" should be saved in the category "<category>"
 
     Examples:
-      | agent_name    | category                  | template_name              | url                           |
-      | Jane Smith    | CONTRACT_AND_NEGOTIATION  | Purchase Agreement         | http://example.com/contract  |
-      | John Doe      | TITLE_AND_OWNERSHIP       | Title Report               | http://example.com/title      |
-      | Alice Johnson | DISCLOSURE                | Property Disclosure        | http://example.com/disclosure |
-      | Bob Brown     | CLOSING_AND_FINANCING     | Closing Disclosure         | http://example.com/closing    |
-      | Charlie Davis | AGREEMENTS                | Listing Agreement          | http://example.com/listing    |
-      | David Evans   | LISTINGS_AND_MARKETING    | Open House Flyer           | http://example.com/openhouse  |
-      | Frank Wilson  | PROPERTY_MANAGEMENT       | Property Management Plan   | http://example.com/property_management |
-      | George Miller | INSURANCE                 | Homeowners Insurance       | http://example.com/homeowners  |
-      | Henry Adams   | MISCELLANEOUS             | Miscellaneous Document     | http://example.com/miscellaneous |
+      | agent_name    | category                  | template_name              | path                           |
+      | Jane Smith    | CONTRACT_AND_NEGOTIATION  | Purchase Agreement         | /templates/CONTRACT_AND_NEGOTIATION/contract.pdf       |
+      | John Doe      | TITLE_AND_OWNERSHIP       | Title Report               | /templates/TITLE_AND_OWNERSHIP/title.docx         |
+      | Alice Johnson | DISCLOSURE                | Property Disclosure        | /templates/DISCLOSURE/disclosure.pdf     |
+      | Bob Brown     | CLOSING_AND_FINANCING     | Closing Disclosure         | /templates/CLOSING_AND_FINANCING/closing.pdf        |
+      | Charlie Davis | AGREEMENTS                | Listing Agreement          | /templates/AGREEMENTS/listing.docx      |
+      | David Evans   | LISTINGS_AND_MARKETING    | Open House Flyer           | /templates/LISTINGS_AND_MARKETING/openhouse.pdf     |
+      | Frank Wilson  | PROPERTY_MANAGEMENT       | Property Management Plan   | /templates/PROPERTY_MANAGEMENT/property_management.pdf |
+      | George Miller | INSURANCE                 | Homeowners Insurance       | /templates/INSURANCE/homeowners.pdf    |
+      | Henry Adams   | MISCELLANEOUS             | Miscellaneous Document     | /templates/MISCELLANEOUS/miscellaneous.pdf |
 
   Scenario Outline: Add document to transaction
     Given a transaction of "<transaction_type>" created by the real estate agent "<agent_name>" for the property "<property>"

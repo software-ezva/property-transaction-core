@@ -53,11 +53,11 @@ Given(
 );
 
 When(
-  `the real estate agent uploads a document template named {string} with url {string} to the category {string}`,
+  `the real estate agent uploads a document template named {string} with path {string} to the category {string}`,
   async function (
     this: TestWorld,
     templateName: string,
-    url: string,
+    path: string,
     category: string,
   ) {
     const { documentTemplateService } = getServices();
@@ -66,9 +66,8 @@ When(
 
     this.documentTemplate =
       await documentTemplateService.uploadTemplateDocument(
-        this.user.auth0Id,
         templateName,
-        url,
+        path,
         categoryValue,
       );
   },
@@ -119,9 +118,8 @@ Given(
       DocumentCategory[category as keyof typeof DocumentCategory];
     this.documentTemplate =
       await documentTemplateService.uploadTemplateDocument(
-        this.user.auth0Id,
         templateName,
-        faker.internet.url(),
+        `templates/${faker.string.uuid()}_${templateName.replace(/\s+/g, '_')}.pdf`,
         categoryValue,
       );
   },
@@ -168,9 +166,8 @@ Given(
     const { documentTemplateService, documentService } = getServices();
     this.documentTemplate =
       await documentTemplateService.uploadTemplateDocument(
-        this.user.auth0Id,
         documentName,
-        faker.internet.url(),
+        `templates/${faker.string.uuid()}_${documentName.replace(/\s+/g, '_')}.pdf`,
         DocumentCategory.MISCELLANEOUS,
       );
     this.savedDocument = await documentService.addDocumentToTransaction(
