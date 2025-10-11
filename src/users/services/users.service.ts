@@ -98,10 +98,23 @@ export class UsersService {
     return user;
   }
 
-  async verifyUserIsRealEstateAgent(userId: string): Promise<boolean> {
-    const agent = await this.getUserByAuth0Id(userId);
+  async getUserById(id: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['profile'],
+    });
+
+    if (!user) {
+      this.logger.warn(`User not found with ID: ${id}`);
+      throw new UserNotFoundException();
+    }
+    return user;
+  }
+
+  async verifyUserIsRealEstateAgent(auth0Id: string): Promise<boolean> {
+    const agent = await this.getUserByAuth0Id(auth0Id);
     if (!agent.isRealEstateAgent()) {
-      this.logger.warn(`User with ID ${userId} is not a real estate agent`);
+      this.logger.warn(`User with ID ${auth0Id} is not a real estate agent`);
       throw new UserIsNotRealEstateAgentException();
     }
     return true;
