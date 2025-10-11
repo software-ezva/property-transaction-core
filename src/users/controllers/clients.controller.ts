@@ -1,15 +1,17 @@
-import { Controller, Get, Post, Body, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, Param } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBody,
   ApiBadRequestResponse,
+  ApiParam,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { User } from '../entities/user.entity';
+import { ClientProfile } from '../entities/client-profile.entity';
 import { BaseProfileController } from './base-profile.controller';
-import { ProfilesService } from '../services/profiles.service';
+import { ClientProfilesService } from '../services/client-profiles.service';
 import { CreateClientProfileDto } from '../dto/create-client-profile.dto';
 import { ProfileResponseDto } from '../dto/profile-response.dto';
 import { SimpleUserResponseDto } from '../dto/simple-user-response.dto';
@@ -22,8 +24,8 @@ interface AuthenticatedRequest extends Request {
 @Controller('clients')
 @ApiTags('clients')
 export class ClientsController extends BaseProfileController {
-  constructor(profilesService: ProfilesService) {
-    super(profilesService);
+  constructor(private readonly clientProfilesService: ClientProfilesService) {
+    super();
   }
 
   @Get()
@@ -38,7 +40,7 @@ export class ClientsController extends BaseProfileController {
   })
   async getAllClients(): Promise<Partial<User>[]> {
     try {
-      return await this.profilesService.getAllClients();
+      return await this.clientProfilesService.getAllClients();
     } catch (error) {
       this.handleError(error, 'retrieve clients');
     }
@@ -68,13 +70,37 @@ export class ClientsController extends BaseProfileController {
   ): Promise<ProfileResponseDto> {
     try {
       this.validateAuthentication(req);
-      const profile = await this.profilesService.assignClientProfile(
+      const profile = await this.clientProfilesService.assignClientProfile(
         req.user.sub,
         dto,
       );
       return { profile };
     } catch (error) {
       this.handleError(error, 'assign client profile', req.user?.sub);
+    }
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get client by ID',
+    description: 'Retrieves a specific client by their profile ID.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Client profile ID',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Client retrieved successfully',
+  })
+  async getClientById(
+    @Param('id') clientId: string,
+  ): Promise<ClientProfile | null> {
+    try {
+      return await this.clientProfilesService.getClientById(clientId);
+    } catch (error) {
+      this.handleError(error, 'retrieve client by ID');
     }
   }
 }

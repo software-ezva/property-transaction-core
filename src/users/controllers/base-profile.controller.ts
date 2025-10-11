@@ -4,7 +4,6 @@ import {
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-import { ProfilesService } from '../services/profiles.service';
 import { Auth0User } from '../interfaces/auth0-user.interface';
 
 interface AuthenticatedRequest extends Request {
@@ -19,8 +18,6 @@ interface AuthenticatedRequest extends Request {
 })
 export abstract class BaseProfileController {
   protected readonly logger = new Logger(this.constructor.name);
-
-  constructor(protected readonly profilesService: ProfilesService) {}
 
   protected validateAuthentication(req: AuthenticatedRequest): void {
     if (!req.user) {

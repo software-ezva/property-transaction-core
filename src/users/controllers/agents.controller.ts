@@ -1,15 +1,17 @@
-import { Controller, Get, Post, Body, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, Param } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBody,
   ApiBadRequestResponse,
+  ApiParam,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { User } from '../entities/user.entity';
+import { RealEstateAgentProfile } from '../entities/real-estate-agent-profile.entity';
 import { BaseProfileController } from './base-profile.controller';
-import { ProfilesService } from '../services/profiles.service';
+import { AgentProfilesService } from '../services/agent-profiles.service';
 import { CreateAgentProfileDto } from '../dto/create-agent-profile.dto';
 import { ProfileResponseDto } from '../dto/profile-response.dto';
 import { SimpleUserResponseDto } from '../dto/simple-user-response.dto';
@@ -22,8 +24,8 @@ interface AuthenticatedRequest extends Request {
 @Controller('agents')
 @ApiTags('agents')
 export class AgentsController extends BaseProfileController {
-  constructor(profilesService: ProfilesService) {
-    super(profilesService);
+  constructor(private readonly agentProfilesService: AgentProfilesService) {
+    super();
   }
 
   @Get()
@@ -39,7 +41,7 @@ export class AgentsController extends BaseProfileController {
   })
   async getAllAgents(): Promise<Partial<User>[]> {
     try {
-      return await this.profilesService.getAllAgents();
+      return await this.agentProfilesService.getAllAgents();
     } catch (error) {
       this.handleError(error, 'retrieve agents');
     }
@@ -70,13 +72,61 @@ export class AgentsController extends BaseProfileController {
   ): Promise<ProfileResponseDto> {
     try {
       this.validateAuthentication(req);
-      const profile = await this.profilesService.assignAgentProfile(
+      const profile = await this.agentProfilesService.assignAgentProfile(
         req.user.sub,
         dto,
       );
       return { profile };
     } catch (error) {
       this.handleError(error, 'assign agent profile', req.user?.sub);
+    }
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get agent by ID',
+    description: 'Retrieves a specific real estate agent by their profile ID.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Agent profile ID',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Agent retrieved successfully',
+  })
+  async getAgentById(
+    @Param('id') agentId: string,
+  ): Promise<RealEstateAgentProfile | null> {
+    try {
+      return await this.agentProfilesService.getAgentById(agentId);
+    } catch (error) {
+      this.handleError(error, 'retrieve agent by ID');
+    }
+  }
+
+  @Get('brokerage/:brokerageId')
+  @ApiOperation({
+    summary: 'Get agents by brokerage',
+    description: 'Retrieves all agents working for a specific brokerage.',
+  })
+  @ApiParam({
+    name: 'brokerageId',
+    description: 'Brokerage ID',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Agents retrieved successfully',
+  })
+  async getAgentsByBrokerage(
+    @Param('brokerageId') brokerageId: string,
+  ): Promise<RealEstateAgentProfile[]> {
+    try {
+      return await this.agentProfilesService.getAgentsByBrokerage(brokerageId);
+    } catch (error) {
+      this.handleError(error, 'retrieve agents by brokerage');
     }
   }
 }
