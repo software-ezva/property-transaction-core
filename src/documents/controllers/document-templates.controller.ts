@@ -135,7 +135,7 @@ export class DocumentTemplatesController {
         );
 
       return {
-        uuid: documentTemplate.uuid,
+        uuid: documentTemplate.documentTemplateId,
         title: documentTemplate.title,
         category: documentTemplate.category,
         url: secureUrl,
@@ -187,7 +187,7 @@ export class DocumentTemplatesController {
 
       // Return response DTOs without URL
       return documentTemplates.map((template) => ({
-        uuid: template.uuid,
+        uuid: template.documentTemplateId,
         title: template.title,
         category: template.category,
         createdAt: template.createdAt,
@@ -236,7 +236,7 @@ export class DocumentTemplatesController {
         await this.documentTemplatesService.findOne(id, auth0UserId);
 
       return {
-        uuid: documentTemplate.uuid,
+        uuid: documentTemplate.documentTemplateId,
         title: documentTemplate.title,
         category: documentTemplate.category,
         url: secureUrl,

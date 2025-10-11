@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DocumentCategory, DocumentStatus } from '../../common/enums';
 
-export class DocumentResponseDto {
+export class DocumentStatusResponseDto {
   @ApiProperty({
     description: 'Unique identifier of the document',
     example: '550e8400-e29b-41d4-a716-446655440000',
@@ -24,16 +24,9 @@ export class DocumentResponseDto {
   @ApiProperty({
     description: 'Current status of the document',
     enum: DocumentStatus,
-    example: DocumentStatus.PENDING,
+    example: DocumentStatus.IN_EDITION,
   })
   status: DocumentStatus;
-
-  @ApiProperty({
-    description: 'Temporary secure URL for accessing the document file',
-    example:
-      'https://firebasestorage.googleapis.com/v0/b/project.appspot.com/o/documents%2Fdoc.pdf?alt=media&token=xyz',
-  })
-  url: string;
 
   @ApiProperty({
     description:
