@@ -8,7 +8,6 @@ Feature: Handle documents
     And a document template category "<category>" exists
     When the real estate agent uploads a document template named "<template_name>" with path "<path>" to the category "<category>"
     Then the document template "<template_name>" should be saved in the category "<category>"
-
     Examples:
       | agent_name    | category                  | template_name              | path                           |
       | Jane Smith    | CONTRACT_AND_NEGOTIATION  | Purchase Agreement         | /templates/CONTRACT_AND_NEGOTIATION/contract.pdf       |
@@ -26,7 +25,6 @@ Feature: Handle documents
     And a document template with id "<document_name>" in category "<category>" exists
     When the real estate agent adds the document from document templates to the transaction
     Then the document "<document_name>" should be duplicated in the transaction
-
     Examples:
       | transaction_type | agent_name       |property     | document_name        | category                  |
       | Purchase         | Jane Smith       | 123 Main St | Purchase Agreement   | CONTRACT_AND_NEGOTIATION  |
@@ -35,45 +33,32 @@ Feature: Handle documents
       | Purchase         | Jane Smith       | 123 Main St | Closing Disclosure    | CLOSING_AND_FINANCING     |
       | Purchase         | Jane Smith       | 123 Main St | Listing Agreement     | AGREEMENTS                |
 
-#   #TODO: Add scenario for filling out document
-#   #TODO: Remove or archive document
+  Scenario: Check document for edit
+    Given a transaction of "Purchase" created by the real estate agent "Jane Smith" for the property "123 Main St"
+    And the transaction has a document named "Purchase Agreement" with status "Pending" 
+    When the real estate agent checks the document for editing
+    Then the document status should be changed to "In Edition" 
+    And the document should be editable
 
-Scenario Outline: Succesfully change the status of a document
-  Given a transaction of "<transaction_type>" created by the real estate agent "<agent_name>" for the property "<property>"
-  And the transaction has a document named "<document_name>" with status "<initial_status>"
-  When the real estate agent changes the status of the document "<document_name>" to "<new_status>"
-  Then the document should have status "<new_status>"
+  Scenario: Edit document for signing
+    Given a transaction of "Purchase" created by the real estate agent "Jane Smith" for the property "123 Main St"
+    And the transaction has a document named "Purchase Agreement" with status "In Edition" 
+    When the real estate agent edits the document and is ready for signing
+    Then the status of the document should be changed to "Awaiting Signatures"
+    And the document should be signable
+ 
+  Scenario: Request a sign
+    Given a transaction of "Purchase" created by the real estate agent "Jane Smith" for the property "123 Main St"
+    And exist a user named "Alice" as interested party in the property added to the transaction as supporting professional
+    And the transaction has a document named "Purchase Agreement" with status "Awaiting Signatures"
+    When the real estate agent requests a sign for the document of party interested
+    Then the document could be signed by the interested party
 
-  Examples:
-    | agent_name  | property      | document_name        | initial_status | new_status  | transaction_type |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Pending        | Ready       | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Ready          | Waiting     | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Waiting        | Signed      | Purchase|
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Ready          | Pending     | Purchase|
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Waiting        | Pending     | Purchase|
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Ready          | Pending     | Purchase|
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Ready          | Signed      | Purchase|
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Pending        | Rejected    | Purchase|
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Ready          | Rejected    | Purchase|
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Waiting        | Rejected    | Purchase|
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Signed         | Rejected    | Purchase|
+  Scenario: Correct a document
+    Given a transaction of "Purchase" created by the real estate agent "Jane Smith" for the property "123 Main St"
+    And the transaction has a document named "Purchase Agreement" with status "Rejected"
+    When the real estate agent corrects the document after rejection
+    Then the document status should be changed to "In Edition"
+    And the document should be editable
+      
 
-
-Scenario Outline: Unsuccessfully change the status of a document
-Given a transaction of "<transaction_type>" created by the real estate agent "<agent_name>" for the property "<property>"
-  And the transaction has a document named "<document_name>" with status "<initial_status>"
-  When the real estate agent changes the status of the document "<document_name>" to "<new_status>"
-  Then an error should occur indicating that the status change is not allowed
-
-  Examples:
-    | agent_name  | property      | document_name        | initial_status | new_status  | transaction_type |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Pending        | Waiting     | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Pending        | Signed      | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Waiting        | Ready       | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Signed         | Pending     | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Signed         | Ready       | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Signed         | Waiting     | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Rejected       | Ready       | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Rejected       | Waiting     | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Rejected       | Signed      | Purchase |
-    | Jane Smith  | 123 Main St   | Purchase Agreement   | Rejected       | Pending     | Purchase |
