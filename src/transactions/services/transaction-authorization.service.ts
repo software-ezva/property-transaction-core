@@ -64,4 +64,36 @@ export class TransactionAuthorizationService {
 
     return { transaction, user };
   }
+
+  async userBelongsToTransaction(
+    transactionId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const transaction = await this.transactionRepository.findOne({
+      where: { transactionId },
+      relations: ['agent', 'client', 'supportingProfessionals'],
+    });
+
+    if (!transaction) {
+      throw new TransactionNotFoundException(transactionId);
+    }
+
+    if (transaction.agent?.id === userId) {
+      return true;
+    }
+
+    if (transaction.client?.id === userId) {
+      return true;
+    }
+
+    const isSupportingProfessional = transaction.supportingProfessionals?.some(
+      (professional) => professional.id === userId,
+    );
+
+    if (isSupportingProfessional) {
+      return true;
+    }
+
+    return false;
+  }
 }

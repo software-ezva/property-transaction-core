@@ -9,6 +9,7 @@
     "endpoints",
     "features",
     "exceptions",
-    "entities"
+    "entities",
+    "services"
   ]
 }

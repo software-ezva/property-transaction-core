@@ -8,6 +8,8 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { Property } from '../../properties/entities/property.entity';
 import { User } from '../../users/entities/user.entity';
@@ -68,4 +70,8 @@ export class Transaction {
 
   @OneToMany(() => Document, (document) => document.transaction)
   documents: Document[];
+
+  @ManyToMany(() => User, (user) => user.supportingProfessionalTransactions)
+  @JoinTable()
+  supportingProfessionals: User[];
 }

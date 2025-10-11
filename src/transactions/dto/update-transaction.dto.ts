@@ -21,7 +21,7 @@ export class UpdateTransactionDto {
   status?: TransactionStatus;
 
   @ApiPropertyOptional({
-    description: 'The client ID',
+    description: 'The client ID to assign to the transaction',
     type: 'string',
     format: 'uuid',
     example: '550e8400-e29b-41d4-a716-446655440000',

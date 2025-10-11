@@ -15,6 +15,9 @@ import {
   WorkflowTemplateDoesNotExistException,
   DuplicateTransactionException,
   TransactionNotFoundException,
+
+  SupportingProfessionalNotFoundException,
+  SupportingProfessionalAlreadyAssignedException,
 } from '../expections';
 import { UserIsNotRealEstateAgentException } from '../../users/exceptions';
 import { UsersService } from '../../users/services/users.service';
@@ -55,7 +58,7 @@ export class TransactionsService {
       const workflowTemplate =
         await this.templatesService.findOne(workflowTemplateId);
       const client = clientId
-        ? await this.userService.getUserByAuth0Id(clientId)
+        ? await this.userService.getUserById(clientId)
         : null;
 
       // Check for duplicate transaction
@@ -225,8 +228,35 @@ export class TransactionsService {
     try {
       const transaction = await this.findOne(id);
 
-      // Update only provided fields
-      Object.assign(transaction, updateTransactionDto);
+      // Handle clientId update separately as it's a relation
+      if (updateTransactionDto.clientId !== undefined) {
+        try {
+          const client = await this.userService.getUserById(
+            updateTransactionDto.clientId,
+          );
+          transaction.client = client;
+          this.logger.log(
+            `Client assigned to transaction ${id}: ${updateTransactionDto.clientId}`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to assign client ${updateTransactionDto.clientId} to transaction ${id}`,
+            error,
+          );
+          throw new Error(
+            `Client with ID '${updateTransactionDto.clientId}' does not exist in the system. Please verify the client ID is correct and the user is registered.`,
+          );
+        }
+      }
+
+      // Update other simple fields
+      if (updateTransactionDto.status !== undefined) {
+        transaction.status = updateTransactionDto.status;
+      }
+
+      if (updateTransactionDto.additionalNotes !== undefined) {
+        transaction.additionalNotes = updateTransactionDto.additionalNotes;
+      }
 
       const updatedTransaction =
         await this.transactionRepository.save(transaction);
@@ -369,5 +399,79 @@ export class TransactionsService {
     });
 
     return await this.transactionRepository.save(newTransaction);
+  }
+
+  async addSupportingProfessionalToTransaction(
+    agentAuth0Id: string,
+    transactionId: string,
+    professionalId: string,
+  ): Promise<void> {
+    // Verify that the agent can access this transaction
+    await this.transactionAuthorizationService.verifyUserCanAccessTransaction(
+      transactionId,
+      agentAuth0Id,
+    );
+
+    // Get the professional user
+    const professional = await this.userService.getUserById(professionalId);
+
+    // Verify that the user is actually a supporting professional
+    if (!professional.isSupportingProfessional()) {
+      this.logger.warn(
+        `User with ID ${professionalId} is not a supporting professional`,
+      );
+      throw new SupportingProfessionalNotFoundException(professionalId);
+    }
+
+    // Get transaction WITH current supporting professionals
+    const transaction = await this.transactionRepository.findOne({
+      where: { transactionId },
+      relations: ['supportingProfessionals'],
+    });
+
+    if (!transaction) {
+      throw new TransactionNotFoundException(transactionId);
+    }
+
+    const isAlreadyAssigned = transaction.supportingProfessionals.some(
+      (sp) => sp.id === professionalId,
+    );
+
+    if (isAlreadyAssigned) {
+      throw new SupportingProfessionalAlreadyAssignedException(
+        professionalId,
+        transactionId,
+      );
+    }
+
+    // Add the professional to the transaction
+    transaction.supportingProfessionals.push(professional);
+    await this.transactionRepository.save(transaction);
+
+    this.logger.log(
+      `Supporting professional ${professionalId} added to transaction ${transactionId} by agent ${agentAuth0Id}`,
+    );
+  }
+
+  async getSupportingProfessionalsForTransaction(
+    agentAuth0Id: string,
+    transactionId: string,
+  ): Promise<User[]> {
+    // Verify that the agent can access this transaction
+    await this.transactionAuthorizationService.verifyUserCanAccessTransaction(
+      transactionId,
+      agentAuth0Id,
+    );
+
+    const transaction = await this.transactionRepository.findOne({
+      where: { transactionId },
+      relations: ['supportingProfessionals', 'supportingProfessionals.profile'],
+    });
+
+    if (!transaction) {
+      throw new Error('Transaction not found');
+    }
+
+    return transaction.supportingProfessionals;
   }
 }
