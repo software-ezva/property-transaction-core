@@ -1,19 +1,17 @@
 import { Given, Then, When } from '@cucumber/cucumber';
-import { User } from '../../src/users/entities/user.entity';
 import { getRepositories, getServices } from '../support/database-helper';
 import { faker } from '@faker-js/faker';
 import { expect } from 'expect';
 import { DocumentCategory } from '../../src/common/enums';
 import { DocumentStatus } from '../../src/common/enums';
-import { DocumentTemplate } from 'src/documents/entities/document-template.entity';
-import { mapToTransactionType } from '../support/transaction-type-mapper';
-import { Transaction } from 'src/transactions/entities/transaction.entity';
+import { DocumentTemplate } from '../../src/documents/entities/document-template.entity';
 import { Document } from '../../src/documents/entities/document.entity';
 import { InvalidStatusTransitionException } from '../../src/documents/expections/invalid-status-transition.exception';
-export interface TestWorld {
-  user: User;
+import { DocumentFile } from '../../src/documents/interfaces/document-file.interface';
+import { SharedTestWorld } from './shared-steps';
+
+export interface TestWorld extends SharedTestWorld {
   documentTemplate: DocumentTemplate;
-  transaction: Transaction;
   documentName: string;
   savedDocument: Document;
   lastError: InvalidStatusTransitionException | undefined;
@@ -22,9 +20,9 @@ export interface TestWorld {
 Given(
   `a real estate agent named {string}`,
   async function (this: TestWorld, agentName: string) {
-    const { userService, profileService } = getServices();
+    const { userService, agentProfilesService } = getServices();
     // Create real estate agent
-    this.user = await userService.create(
+    this.agent = await userService.create(
       faker.string.uuid(),
       faker.internet.email(),
       agentName,
@@ -32,14 +30,14 @@ Given(
     );
 
     // Create real estate agent profile
-    await profileService.assignAgentProfile(this.user.auth0Id, {
+    await agentProfilesService.assignAgentProfile(this.agent.auth0Id, {
       esign_name: agentName,
       esign_initials: agentName.charAt(0).toUpperCase(),
       phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
       license_number: faker.string.alphanumeric(10),
     });
     expect(
-      await userService.verifyUserIsRealEstateAgent(this.user.auth0Id),
+      await userService.verifyUserIsRealEstateAgent(this.agent.auth0Id),
     ).toBe(true);
   },
 );
@@ -84,33 +82,6 @@ Then(
 );
 
 Given(
-  'a transaction of {string} created by the real estate agent {string} for the property {string}',
-  async function (
-    this: TestWorld,
-    transactionType: string,
-    agentName: string,
-    propertyAddress: string,
-  ) {
-    const { transactionService } = getServices();
-    await createTransactionForAgent.call(
-      this,
-      transactionType,
-      agentName,
-      propertyAddress,
-    );
-
-    // Verify transaction exists
-    const hasTransaction = await transactionService.existsATransaction(
-      this.transaction.property,
-      this.user,
-      null,
-      this.transaction.transactionType,
-    );
-    expect(hasTransaction).toBe(true);
-  },
-);
-
-Given(
   `a document template with id {string} in category {string} exists`,
   async function (this: TestWorld, templateName: string, category: string) {
     const { documentTemplateService } = getServices();
@@ -131,9 +102,9 @@ When(
     const { documentService } = getServices();
     const { transactionRepository } = getRepositories();
     this.savedDocument = await documentService.addDocumentToTransaction(
-      this.user,
-      this.transaction,
-      this.documentTemplate,
+      this.agent.auth0Id,
+      this.transaction.transactionId,
+      this.documentTemplate.documentTemplateId,
     );
 
     const foundTransaction = await transactionRepository.findOne({
@@ -171,9 +142,9 @@ Given(
         DocumentCategory.MISCELLANEOUS,
       );
     this.savedDocument = await documentService.addDocumentToTransaction(
-      this.user,
-      this.transaction,
-      this.documentTemplate,
+      this.agent.auth0Id,
+      this.transaction.transactionId,
+      this.documentTemplate.documentTemplateId,
       status as DocumentStatus,
     );
     expect(this.savedDocument.status).toBe(status as DocumentStatus);
@@ -181,81 +152,123 @@ Given(
 );
 
 When(
-  `the real estate agent changes the status of the document {string} to {string}`,
-  async function (this: TestWorld, documentName: string, status: string) {
+  `the real estate agent checks the document for editing`,
+  async function (this: TestWorld) {
     const { documentService } = getServices();
-    try {
-      this.savedDocument = await documentService.updateDocumentStatus(
-        this.user.auth0Id,
-        this.transaction.transactionId,
-        this.savedDocument.documentId,
-        status as DocumentStatus,
-      );
-      this.lastError = undefined;
-    } catch (err) {
-      // store error for the Then step to assert
-      this.lastError = err as InvalidStatusTransitionException;
-    }
+    const { document } = await documentService.checkDocumentForEdit(
+      this.agent.auth0Id,
+      this.savedDocument.documentId,
+      this.transaction.transactionId,
+    );
+    this.savedDocument = document;
   },
 );
 
 Then(
-  `the document should have status {string}`,
-  function (this: TestWorld, status: string) {
-    const document = this.savedDocument;
-    expect(document.status).toBe(status as DocumentStatus);
+  `the document status should be changed to {string}`,
+  function (this: TestWorld, newStatus: string) {
+    expect(this.savedDocument.status).toBe(newStatus as DocumentStatus);
+  },
+);
+Then(`the document should be editable`, function (this: TestWorld) {
+  const { documentService } = getServices();
+  const isEditable = documentService.isDocumentEditable(this.savedDocument);
+  expect(isEditable).toBe(true);
+});
+
+// When the real estate agent edits the document and is ready for signing
+When(
+  `the real estate agent edits the document and is ready for signing`,
+  async function (this: TestWorld) {
+    const { documentService } = getServices();
+    // Simular archivo para la edición
+    const mockFile: DocumentFile = {
+      originalname: 'Purchase Agreement.pdf',
+      mimetype: 'application/pdf',
+      size: 1024,
+      buffer: Buffer.from('mock file content'),
+    };
+
+    const { document } = await documentService.edit(
+      this.transaction.transactionId,
+      this.savedDocument.documentId,
+      this.agent.auth0Id,
+      mockFile,
+      true,
+    );
+    this.savedDocument = document;
   },
 );
 
 Then(
-  `an error should occur indicating that the status change is not allowed`,
+  `the status of the document should be changed to {string}`,
+  function (this: TestWorld, newStatus: string) {
+    expect(this.savedDocument.status).toBe(newStatus as DocumentStatus);
+  },
+);
+
+Then(`the document should be signable`, function (this: TestWorld) {
+  const { documentService } = getServices();
+  const isSignable = documentService.isDocumentSignable(this.savedDocument);
+  expect(isSignable).toBe(true);
+});
+
+When(
+  `the real estate agent requests a sign for the document of party interested`,
+  async function (this: TestWorld) {
+    const { documentService } = getServices();
+    this.savedDocument = await documentService.requestSign(
+      this.agent.auth0Id,
+      this.transaction.transactionId,
+      this.savedDocument.documentId,
+      {
+        userId: this.interestedParty.id,
+      },
+    );
+  },
+);
+
+Then(
+  `the document could be signed by the interested party`,
   function (this: TestWorld) {
-    const error = this.lastError;
-    expect(error).toBeDefined();
-    expect(error).toBeInstanceOf(InvalidStatusTransitionException);
+    const { signatureService } = getServices();
+
+    // Use the document returned from requestSign (already has relations loaded)
+    const canSign = signatureService.canUserSignDocument(
+      this.savedDocument,
+      this.interestedParty.auth0Id,
+    );
+    expect(canSign).toBe(true);
   },
 );
 
-async function createTransactionForAgent(
-  this: TestWorld,
-  transactionType: string,
-  agentName: string,
-  propertyAddress: string,
-) {
-  const { userService, profileService, propertyService, transactionService } =
-    getServices();
+When(
+  `the real estate agent corrects the document after rejection`,
+  async function (this: TestWorld) {
+    const { documentService } = getServices();
 
-  // Create real estate agent
-  this.user = await userService.create(
-    faker.string.uuid(),
-    faker.internet.email(),
-    agentName,
-    agentName,
-  );
+    // First, correct the document status (from Rejected to In Edition)
+    this.savedDocument = await documentService.correctDocument(
+      this.agent.auth0Id,
+      this.transaction.transactionId,
+      this.savedDocument.documentId,
+    );
 
-  // Create real estate agent profile
-  await profileService.assignAgentProfile(this.user.auth0Id, {
-    esign_name: agentName,
-    esign_initials: agentName.charAt(0).toUpperCase(),
-    phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
-    license_number: faker.string.alphanumeric(10),
-  });
+    // Then edit the document with the new file
+    const mockFile: DocumentFile = {
+      originalname: 'Purchase Agreement.pdf',
+      mimetype: 'application/pdf',
+      size: 1024,
+      buffer: Buffer.from('mock file content'),
+    };
 
-  // Create property
-  const property = await propertyService.create({
-    address: propertyAddress,
-    price: faker.number.int({ min: 100000, max: 1000000 }),
-    size: faker.number.int({ min: 500, max: 5000 }),
-    bedrooms: faker.number.int({ min: 1, max: 5 }),
-    bathrooms: faker.number.int({ min: 1, max: 3 }),
-  });
-
-  // Create transaction with both agent and client
-  this.transaction = await transactionService.createAndSaveTransaction(
-    mapToTransactionType(transactionType),
-    property,
-    this.user,
-    null,
-    transactionType,
-  );
-}
+    const { document } = await documentService.edit(
+      this.transaction.transactionId,
+      this.savedDocument.documentId,
+      this.agent.auth0Id,
+      mockFile,
+      false,
+    );
+    this.savedDocument = document;
+  },
+);

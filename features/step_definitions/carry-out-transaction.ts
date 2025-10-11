@@ -33,8 +33,12 @@ Given(
     agentName: string,
     propertyAddress: string,
   ) {
-    const { userService, profileService, propertyService, transactionService } =
-      getServices();
+    const {
+      userService,
+      agentProfilesService,
+      propertyService,
+      transactionService,
+    } = getServices();
 
     // Create real estate agent
     this.user = await userService.create(
@@ -45,7 +49,7 @@ Given(
     );
 
     // Create real estate agent profile
-    await profileService.assignAgentProfile(this.user.auth0Id, {
+    await agentProfilesService.assignAgentProfile(this.user.auth0Id, {
       esign_name: agentName,
       esign_initials: agentName.charAt(0).toUpperCase(),
       phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
@@ -335,8 +339,12 @@ async function setUpWorkflow(
   this: TestWorld,
   typeOfTransaction: TransactionType = TransactionType.LISTING_FOR_LEASE,
 ) {
-  const { userService, profileService, propertyService, transactionService } =
-    getServices();
+  const {
+    userService,
+    agentProfilesService,
+    propertyService,
+    transactionService,
+  } = getServices();
   const { workflowRepository } = getRepositories();
 
   // Create real estate agent
@@ -348,7 +356,7 @@ async function setUpWorkflow(
   );
 
   // Create real estate agent profile
-  await profileService.assignAgentProfile(this.user.auth0Id, {
+  await agentProfilesService.assignAgentProfile(this.user.auth0Id, {
     esign_name: faker.person.fullName(),
     esign_initials: faker.person.firstName().charAt(0).toUpperCase(),
     phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
