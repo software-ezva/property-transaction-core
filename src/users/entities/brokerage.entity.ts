@@ -3,9 +3,12 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
+  ManyToMany,
   CreateDateColumn,
 } from 'typeorm';
 import { RealEstateAgentProfile } from './real-estate-agent-profile.entity';
+import { BrokerProfile } from './broker-profile.entity';
+import { SupportingProfessionalProfile } from './supporting-professional-profile.entity';
 
 @Entity('brokerages')
 export class Brokerage {
@@ -70,6 +73,15 @@ export class Brokerage {
 
   @OneToMany(() => RealEstateAgentProfile, (agent) => agent.brokerage)
   agents: RealEstateAgentProfile[];
+
+  @OneToMany(() => BrokerProfile, (broker) => broker.brokerage)
+  brokers: BrokerProfile[];
+
+  @ManyToMany(
+    () => SupportingProfessionalProfile,
+    (supportingProfessional) => supportingProfessional.brokerages,
+  )
+  supportingProfessionals: SupportingProfessionalProfile[];
 
   @CreateDateColumn()
   createdAt: Date;

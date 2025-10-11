@@ -4,6 +4,7 @@ import {
   Column,
   OneToOne,
   OneToMany,
+  ManyToMany,
   Index,
 } from 'typeorm';
 import { Transaction } from '../../transactions/entities/transaction.entity';
@@ -64,6 +65,12 @@ export class User {
   @OneToMany(() => Transaction, (transaction) => transaction.client)
   clientTransactions: Transaction[];
 
+  @ManyToMany(
+    () => Transaction,
+    (transaction) => transaction.supportingProfessionals,
+  )
+  supportingProfessionalTransactions: Transaction[];
+
   get fullName(): string {
     return `${this.firstName || ''} ${this.lastName || ''}`.trim();
   }
@@ -78,6 +85,10 @@ export class User {
 
   isClient(): boolean {
     return this.profile?.profileType === ProfileType.CLIENT;
+  }
+
+  isSupportingProfessional(): boolean {
+    return this.profile?.profileType === ProfileType.SUPPORTING_PROFESSIONAL;
   }
 
   toString(): string {
