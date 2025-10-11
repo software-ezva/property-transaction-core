@@ -1,8 +1,8 @@
 export enum DocumentStatus {
   PENDING = 'Pending',
-  WAITING = 'Waiting',
+  IN_EDITION = 'In Edition',
+  AWAITING_SIGNATURES = 'Awaiting Signatures',
   SIGNED = 'Signed',
-  READY = 'Ready',
   REJECTED = 'Rejected',
   ARCHIVED = 'Archived',
 }

@@ -5,11 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
 } from 'typeorm';
 import { DocumentCategory } from '../../common/enums';
 import { DocumentStatus } from '../../common/enums/';
-
 import { Transaction } from '../../transactions/entities/transaction.entity';
+import { Signature } from './signatures.entity';
+
 @Entity('documents')
 export class Document {
   @PrimaryGeneratedColumn('uuid')
@@ -44,4 +46,7 @@ export class Document {
     default: DocumentStatus.PENDING,
   })
   status: DocumentStatus;
+
+  @OneToMany(() => Signature, (signature) => signature.document)
+  signatures: Signature[];
 }

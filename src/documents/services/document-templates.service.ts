@@ -7,13 +7,7 @@ import { UsersService } from '../../users/services/users.service';
 import { StorageService } from './storage.service';
 import { CreateDocumentTemplateDto } from '../dto/create-document-template.dto';
 import { DocumentTemplateNotFoundException } from '../expections/document-template-not-found.exception';
-
-interface UploadedFile {
-  originalname: string;
-  mimetype: string;
-  size: number;
-  buffer: Buffer;
-}
+import { DocumentFile } from '../interfaces/document-file.interface';
 
 @Injectable()
 export class DocumentTemplatesService {
@@ -28,33 +22,29 @@ export class DocumentTemplatesService {
 
   async create(
     createDocumentTemplateDto: CreateDocumentTemplateDto,
-    file: UploadedFile,
+    file: DocumentFile,
     userId: string,
   ): Promise<{ template: DocumentTemplate; secureUrl: string }> {
-    // Verify user is a real estate agent
     await this.userService.verifyUserIsRealEstateAgent(userId);
 
-    // Upload file to storage
     const filePath = await this.storageService.storageTemplateDocument(
       file,
       createDocumentTemplateDto.category,
       createDocumentTemplateDto.title,
     );
-    // Use existing method to create the template
     const documentTemplate = await this.uploadTemplateDocument(
       createDocumentTemplateDto.title,
       filePath,
       createDocumentTemplateDto.category,
     );
 
-    // Generate secure URL directly here
-    const secureUrl = this.storageService.generateSecureUrl(
+    const secureUrl = await this.storageService.generateSecureUrl(
       documentTemplate.filePath,
       1, // 1 hour expiration
     );
 
     this.logger.log(
-      `Document template created successfully with ID: ${documentTemplate.uuid}`,
+      `Document template created successfully with ID: ${documentTemplate.documentTemplateId}`,
     );
 
     return { template: documentTemplate, secureUrl };
@@ -79,15 +69,9 @@ export class DocumentTemplatesService {
   ): Promise<{ template: DocumentTemplate; secureUrl: string }> {
     await this.userService.verifyUserIsRealEstateAgent(userId);
 
-    const template = await this.documentTemplateRepository.findOne({
-      where: { uuid },
-    });
+    const template = await this.getDocumentTemplate(uuid);
 
-    if (!template) {
-      throw new DocumentTemplateNotFoundException(uuid);
-    }
-
-    const secureUrl = this.storageService.generateSecureUrl(
+    const secureUrl = await this.storageService.generateSecureUrl(
       template.filePath,
       1,
     );
@@ -122,5 +106,19 @@ export class DocumentTemplatesService {
       title: templateName,
     });
     return this.documentTemplateRepository.save(newTemplate);
+  }
+
+  async getDocumentTemplate(
+    documentTemplateId: string,
+  ): Promise<DocumentTemplate> {
+    const template = await this.documentTemplateRepository.findOne({
+      where: { documentTemplateId },
+    });
+
+    if (!template) {
+      throw new DocumentTemplateNotFoundException(documentTemplateId);
+    }
+
+    return template;
   }
 }

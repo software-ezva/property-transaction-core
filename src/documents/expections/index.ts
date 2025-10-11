@@ -1,0 +1,9 @@
+export { DocumentNotFoundException } from './document-not-found.exception';
+export { DocumentTemplateNotFoundException } from './document-template-not-found.exception';
+export { InvalidStatusTransitionException } from './invalid-status-transition.exception';
+export { DocumentNotEditableException } from './document-not-editable.exception';
+export { UserCannotSignDocumentException } from './user-cannot-sign-document.exception';
+export { DocumentAlreadySignedException } from './document-already-signed.exception';
+export { DocumentNotReadyForSignaturesException } from './document-not-ready-for-signatures.exception';
+export { SignatureAlreadyRequestedException } from './signature-already-requested.exception';
+export { UserNotInTransactionException } from './user-not-in-transaction.exception';

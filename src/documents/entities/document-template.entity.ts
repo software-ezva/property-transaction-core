@@ -9,7 +9,7 @@ import { DocumentCategory } from '../../common/enums';
 @Entity('document_templates')
 export class DocumentTemplate {
   @PrimaryGeneratedColumn('uuid')
-  uuid: string;
+  documentTemplateId: string;
 
   @Column()
   title: string;
