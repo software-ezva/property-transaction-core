@@ -70,7 +70,7 @@ export class AgentProfilesService {
     if (brokerageId) {
       brokerage =
         (await this.brokerageRepository.findOne({
-          where: { id: brokerageId },
+          where: { uuid: brokerageId },
         })) || undefined;
     }
 
@@ -113,7 +113,7 @@ export class AgentProfilesService {
     brokerageId: string,
   ): Promise<RealEstateAgentProfile[]> {
     return await this.agentProfileRepository.find({
-      where: { brokerage: { id: brokerageId } },
+      where: { brokerage: { uuid: brokerageId } },
       relations: ['user', 'brokerage'],
     });
   }

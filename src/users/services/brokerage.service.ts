@@ -34,13 +34,13 @@ export class BrokerageService {
     });
   }
 
-  async findOne(id: string): Promise<Brokerage> {
+  async findOne(uuid: string): Promise<Brokerage> {
     const brokerage = await this.brokerageRepository.findOne({
-      where: { id },
+      where: { uuid },
     });
 
     if (!brokerage) {
-      throw new NotFoundException(`Brokerage with ID ${id} not found`);
+      throw new NotFoundException(`Brokerage with ID ${uuid} not found`);
     }
 
     return brokerage;

@@ -1,11 +1,4 @@
-import {
-  IsString,
-  IsOptional,
-  IsDateString,
-  IsInt,
-  IsUUID,
-  IsNotEmpty,
-} from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsNotEmpty } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateBrokerProfileDto {
@@ -39,37 +32,22 @@ export class CreateBrokerProfileDto {
   })
   @IsString()
   @IsOptional()
-  broker_license_number?: string;
+  license_number?: string;
 
   @ApiPropertyOptional({
-    description: 'Date when broker license expires',
-    example: '2025-12-31',
-  })
-  @IsDateString()
-  @IsOptional()
-  license_expiration_date?: string;
-
-  @ApiPropertyOptional({
-    description: 'State where the broker is licensed',
-    example: 'California',
+    description: 'MLS (Multiple Listing Service) number',
+    example: 'MLS123456',
   })
   @IsString()
   @IsOptional()
-  license_state?: string;
+  mls_number?: string;
 
   @ApiPropertyOptional({
-    description: 'Years of experience as a broker',
-    example: 10,
-  })
-  @IsInt()
-  @IsOptional()
-  years_of_experience?: number;
-
-  @ApiProperty({
     description: 'Brokerage ID where the broker works',
     example: 'uuid-string',
+    required: false,
   })
   @IsUUID()
-  @IsNotEmpty()
-  brokerage_id: string;
+  @IsOptional()
+  brokerage_id?: string;
 }

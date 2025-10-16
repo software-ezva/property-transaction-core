@@ -42,13 +42,9 @@ export class BrokerProfilesService {
       dto.esign_name,
       dto.esign_initials,
       dto.phone_number,
+      dto.license_number,
+      dto.mls_number,
       dto.brokerage_id,
-      dto.broker_license_number,
-      dto.license_expiration_date
-        ? new Date(dto.license_expiration_date)
-        : undefined,
-      dto.license_state,
-      dto.years_of_experience,
     );
 
     user.profile = profile;
@@ -62,18 +58,22 @@ export class BrokerProfilesService {
     esign_name: string,
     esign_initials: string,
     phoneNumber: string,
-    brokerageId: string,
-    brokerLicenseNumber?: string,
-    licenseExpirationDate?: Date,
-    licenseState?: string,
-    yearsOfExperience?: number,
+    licenseNumber?: string,
+    mlsNumber?: string,
+    brokerageId?: string,
   ): Promise<BrokerProfile> {
-    const brokerage = await this.brokerageRepository.findOne({
-      where: { id: brokerageId },
-    });
+    let brokerage: Brokerage | undefined;
 
-    if (!brokerage) {
-      throw new Error('Brokerage not found');
+    if (brokerageId) {
+      const foundBrokerage = await this.brokerageRepository.findOne({
+        where: { uuid: brokerageId },
+      });
+
+      if (!foundBrokerage) {
+        throw new Error('Brokerage not found');
+      }
+
+      brokerage = foundBrokerage;
     }
 
     const brokerProfile = this.brokerProfileRepository.create({
@@ -82,11 +82,9 @@ export class BrokerProfilesService {
       esignName: esign_name,
       esignInitials: esign_initials,
       phoneNumber: phoneNumber,
+      licenseNumber: licenseNumber,
+      mlsNumber: mlsNumber,
       brokerage: brokerage,
-      brokerLicenseNumber: brokerLicenseNumber,
-      licenseExpirationDate: licenseExpirationDate,
-      licenseState: licenseState,
-      yearsOfExperience: yearsOfExperience,
     });
 
     return await this.brokerProfileRepository.save(brokerProfile);
@@ -115,8 +113,56 @@ export class BrokerProfilesService {
 
   async getBrokersByBrokerage(brokerageId: string): Promise<BrokerProfile[]> {
     return await this.brokerProfileRepository.find({
-      where: { brokerage: { id: brokerageId } },
+      where: { brokerage: { uuid: brokerageId } },
       relations: ['user', 'brokerage'],
     });
+  }
+
+  async assignBrokerToBrokerage(
+    brokerId: string,
+    brokerageId: string,
+  ): Promise<BrokerProfile> {
+    const broker = await this.brokerProfileRepository.findOne({
+      where: { id: brokerId },
+      relations: ['brokerage'],
+    });
+
+    if (!broker) {
+      throw new Error('Broker not found');
+    }
+
+    const brokerage = await this.brokerageRepository.findOne({
+      where: { uuid: brokerageId },
+    });
+
+    if (!brokerage) {
+      throw new Error('Brokerage not found');
+    }
+
+    broker.brokerage = brokerage;
+    return await this.brokerProfileRepository.save(broker);
+  }
+
+  async removeBrokerFromBrokerage(brokerId: string): Promise<BrokerProfile> {
+    const broker = await this.brokerProfileRepository.findOne({
+      where: { id: brokerId },
+      relations: ['brokerage'],
+    });
+
+    if (!broker) {
+      throw new Error('Broker not found');
+    }
+
+    broker.brokerage = undefined;
+    return await this.brokerProfileRepository.save(broker);
+  }
+
+  async getIndependentBrokers(): Promise<BrokerProfile[]> {
+    return await this.brokerProfileRepository
+      .createQueryBuilder('broker')
+      .leftJoinAndSelect('broker.user', 'user')
+      .leftJoinAndSelect('broker.brokerage', 'brokerage')
+      .where('broker.brokerage IS NULL')
+      .getMany();
   }
 }

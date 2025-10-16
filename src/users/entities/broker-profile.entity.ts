@@ -9,36 +9,21 @@ export class BrokerProfile extends Profile {
     length: 50,
     unique: true,
     nullable: true,
-    comment: 'Broker license number',
   })
-  brokerLicenseNumber: string;
-
-  @Column({
-    type: 'date',
-    nullable: true,
-    comment: 'Date when broker license expires',
-  })
-  licenseExpirationDate: Date;
+  licenseNumber: string;
 
   @Column({
     type: 'varchar',
     length: 100,
     nullable: true,
-    comment: 'State where the broker is licensed',
+    comment: 'MLS number',
   })
-  licenseState: string;
-
-  @Column({
-    type: 'int',
-    nullable: true,
-    comment: 'Years of experience as a broker',
-  })
-  yearsOfExperience: number;
+  mlsNumber: string;
 
   @ManyToOne(() => Brokerage, (brokerage) => brokerage.brokers, {
-    nullable: false,
-    onDelete: 'RESTRICT',
+    nullable: true,
+    onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'brokerageId' })
-  brokerage: Brokerage;
+  brokerage?: Brokerage;
 }

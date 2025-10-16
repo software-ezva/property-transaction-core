@@ -13,7 +13,7 @@ import { SupportingProfessionalProfile } from './supporting-professional-profile
 @Entity('brokerages')
 export class Brokerage {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  uuid: string;
 
   @Column({
     type: 'varchar',

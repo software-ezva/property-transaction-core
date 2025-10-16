@@ -120,7 +120,7 @@ export class SupportingProfessionalsService {
     }
 
     const brokerage = await this.brokerageRepository.findOne({
-      where: { id: brokerageId },
+      where: { uuid: brokerageId },
     });
 
     if (!brokerage) {
@@ -129,7 +129,7 @@ export class SupportingProfessionalsService {
 
     // Check if already assigned
     const isAlreadyAssigned = professional.brokerages.some(
-      (b) => b.id === brokerageId,
+      (b) => b.uuid === brokerageId,
     );
 
     if (!isAlreadyAssigned) {
@@ -154,7 +154,7 @@ export class SupportingProfessionalsService {
     }
 
     professional.brokerages = professional.brokerages.filter(
-      (b) => b.id !== brokerageId,
+      (b) => b.uuid !== brokerageId,
     );
 
     return await this.supportingProfessionalRepository.save(professional);

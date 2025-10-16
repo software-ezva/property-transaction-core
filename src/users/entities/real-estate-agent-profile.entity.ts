@@ -25,5 +25,5 @@ export class RealEstateAgentProfile extends Profile {
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'brokerageId' })
-  brokerage: Brokerage;
+  brokerage?: Brokerage;
 }
