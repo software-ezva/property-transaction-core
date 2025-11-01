@@ -6,8 +6,21 @@ import { Profile, ProfileType } from '../entities/profile.entity';
 import { BrokerProfile } from '../entities/broker-profile.entity';
 import { Brokerage } from '../entities/brokerage.entity';
 import { CreateBrokerProfileDto } from '../dto/create-broker-profile.dto';
-import { UserAlreadyHasAProfileException } from '../exceptions';
+import {
+  UserAlreadyHasAProfileException,
+  BrokerProfileNotFoundException,
+  InvalidAccessCodeFormatException,
+  UserIsNotBrokerException,
+  AlreadyAssociatedWithBrokerageException,
+} from '../exceptions';
 import { UsersService } from './users.service';
+import { BrokerageService } from './brokerage.service';
+import {
+  BrokerageDetailResponseDto,
+  ProfileSummaryDto,
+  SupportingProfessionalSummaryDto,
+} from '../dto/brokerage-detail-response.dto';
+import { AccessCodeGenerator } from '../utils/access-code.generator';
 
 @Injectable()
 export class BrokerProfilesService {
@@ -18,9 +31,8 @@ export class BrokerProfilesService {
     private userRepository: Repository<User>,
     @InjectRepository(BrokerProfile)
     private brokerProfileRepository: Repository<BrokerProfile>,
-    @InjectRepository(Brokerage)
-    private brokerageRepository: Repository<Brokerage>,
     private readonly userService: UsersService,
+    private readonly brokerageService: BrokerageService,
   ) {}
 
   async assignBrokerProfile(
@@ -44,7 +56,6 @@ export class BrokerProfilesService {
       dto.phone_number,
       dto.license_number,
       dto.mls_number,
-      dto.brokerage_id,
     );
 
     user.profile = profile;
@@ -60,22 +71,7 @@ export class BrokerProfilesService {
     phoneNumber: string,
     licenseNumber?: string,
     mlsNumber?: string,
-    brokerageId?: string,
   ): Promise<BrokerProfile> {
-    let brokerage: Brokerage | undefined;
-
-    if (brokerageId) {
-      const foundBrokerage = await this.brokerageRepository.findOne({
-        where: { uuid: brokerageId },
-      });
-
-      if (!foundBrokerage) {
-        throw new Error('Brokerage not found');
-      }
-
-      brokerage = foundBrokerage;
-    }
-
     const brokerProfile = this.brokerProfileRepository.create({
       user,
       profileType: ProfileType.BROKER,
@@ -84,63 +80,30 @@ export class BrokerProfilesService {
       phoneNumber: phoneNumber,
       licenseNumber: licenseNumber,
       mlsNumber: mlsNumber,
-      brokerage: brokerage,
     });
 
     return await this.brokerProfileRepository.save(brokerProfile);
   }
 
-  async getAllBrokers(): Promise<Partial<User>[]> {
-    const brokers = await this.userRepository
-      .createQueryBuilder('user')
-      .select(['user.id', 'user.firstName', 'user.lastName', 'user.email'])
-      .innerJoin('user.profile', 'profile')
-      .where('profile.profileType = :profileType', {
-        profileType: ProfileType.BROKER,
-      })
-      .getMany();
-
-    this.logger.log(`Found ${brokers.length} brokers`);
-    return brokers;
-  }
-
   async getBrokerById(brokerId: string): Promise<BrokerProfile | null> {
-    return await this.brokerProfileRepository.findOne({
+    const brokerProfile = await this.brokerProfileRepository.findOne({
       where: { id: brokerId },
       relations: ['user', 'brokerage'],
     });
+
+    if (!brokerProfile) {
+      this.logger.warn(`Broker profile with ID ${brokerId} not found`);
+      throw new BrokerProfileNotFoundException(brokerId);
+    }
+
+    return brokerProfile;
   }
 
   async getBrokersByBrokerage(brokerageId: string): Promise<BrokerProfile[]> {
     return await this.brokerProfileRepository.find({
-      where: { brokerage: { uuid: brokerageId } },
+      where: { brokerage: { id: brokerageId } },
       relations: ['user', 'brokerage'],
     });
-  }
-
-  async assignBrokerToBrokerage(
-    brokerId: string,
-    brokerageId: string,
-  ): Promise<BrokerProfile> {
-    const broker = await this.brokerProfileRepository.findOne({
-      where: { id: brokerId },
-      relations: ['brokerage'],
-    });
-
-    if (!broker) {
-      throw new Error('Broker not found');
-    }
-
-    const brokerage = await this.brokerageRepository.findOne({
-      where: { uuid: brokerageId },
-    });
-
-    if (!brokerage) {
-      throw new Error('Brokerage not found');
-    }
-
-    broker.brokerage = brokerage;
-    return await this.brokerProfileRepository.save(broker);
   }
 
   async removeBrokerFromBrokerage(brokerId: string): Promise<BrokerProfile> {
@@ -150,19 +113,139 @@ export class BrokerProfilesService {
     });
 
     if (!broker) {
-      throw new Error('Broker not found');
+      this.logger.warn(`Broker profile with ID ${brokerId} not found`);
+      throw new BrokerProfileNotFoundException(brokerId);
     }
 
     broker.brokerage = undefined;
-    return await this.brokerProfileRepository.save(broker);
+    const updatedBroker = await this.brokerProfileRepository.save(broker);
+
+    this.logger.log(`Broker ${brokerId} removed from brokerage`);
+
+    return updatedBroker;
   }
 
-  async getIndependentBrokers(): Promise<BrokerProfile[]> {
-    return await this.brokerProfileRepository
-      .createQueryBuilder('broker')
-      .leftJoinAndSelect('broker.user', 'user')
-      .leftJoinAndSelect('broker.brokerage', 'brokerage')
-      .where('broker.brokerage IS NULL')
-      .getMany();
+  async getBrokerageByBroker(
+    auth0Id: string,
+  ): Promise<BrokerageDetailResponseDto | null> {
+    this.logger.log(`Retrieving brokerage for broker with auth0Id: ${auth0Id}`);
+
+    // Get the broker user
+    const user = await this.userService.getUserByAuth0Id(auth0Id);
+
+    // Verify the user has a broker profile
+    const brokerProfile = await this.brokerProfileRepository.findOne({
+      where: { user: { id: user.id } },
+      relations: ['brokerage'],
+    });
+
+    if (!brokerProfile) {
+      this.logger.warn(
+        `User ${auth0Id} does not have a broker profile assigned`,
+      );
+      throw new BrokerProfileNotFoundException(user.id);
+    }
+
+    // Return null if the broker is not assigned to any brokerage
+    if (!brokerProfile.brokerage) {
+      this.logger.log(
+        `Broker ${auth0Id} is not assigned to any brokerage - returning null`,
+      );
+      return null;
+    }
+
+    // Get the full brokerage details with all relations
+    const brokerage = await this.brokerageService.findByIdWithRelations(
+      brokerProfile.brokerage.id,
+    );
+
+    this.logger.log(
+      `Successfully retrieved brokerage ${brokerage.name} for broker ${auth0Id}`,
+    );
+
+    // Map and return the response
+    return this.mapBrokerageToDetailDto(brokerage);
+  }
+
+  private mapBrokerageToDetailDto(
+    brokerage: Brokerage,
+  ): BrokerageDetailResponseDto {
+    const agents: ProfileSummaryDto[] = brokerage.agents.map((agent) => ({
+      email: agent.user.email,
+      fullName: agent.user.fullName,
+    }));
+
+    const brokers: ProfileSummaryDto[] = brokerage.brokers.map((broker) => ({
+      email: broker.user.email,
+      fullName: broker.user.fullName,
+    }));
+
+    const supportingProfessionals: SupportingProfessionalSummaryDto[] =
+      brokerage.supportingProfessionals.map((sp) => ({
+        email: sp.user.email,
+        fullName: sp.user.fullName,
+        professionalOf: sp.professionalOf,
+      }));
+
+    return {
+      id: brokerage.id,
+      name: brokerage.name,
+      address: brokerage.address,
+      county: brokerage.county,
+      city: brokerage.city,
+      state: brokerage.state,
+      phoneNumber: brokerage.phoneNumber,
+      email: brokerage.email,
+      accessCode: brokerage.accessCode,
+      agents,
+      brokers,
+      supportingProfessionals,
+      createdAt: brokerage.createdAt,
+    };
+  }
+
+  async joinBrokerageWithCode(
+    auth0Id: string,
+    accessCode: string,
+  ): Promise<BrokerProfile> {
+    // Validate access code format
+    if (!AccessCodeGenerator.isValid(accessCode)) {
+      throw new InvalidAccessCodeFormatException(accessCode);
+    }
+
+    const user = await this.userService.getUserByAuth0Id(auth0Id);
+    if (!user.isBroker()) {
+      this.logger.warn(`User with ID ${auth0Id} is not a broker`);
+      throw new UserIsNotBrokerException();
+    }
+
+    // Get broker profile
+    const broker = user.profile as BrokerProfile;
+
+    if (broker.brokerage != null) {
+      this.logger.warn(
+        `Broker ${broker.id} is already associated with a brokerage`,
+      );
+      throw new AlreadyAssociatedWithBrokerageException(user.fullName);
+    }
+
+    // Find brokerage by access code
+    const brokerage = await this.brokerageService.findByAccessCode(accessCode);
+
+    return this.assignBrokerToBrokerage(broker, brokerage);
+  }
+
+  async assignBrokerToBrokerage(
+    brokerProfile: BrokerProfile,
+    brokerage: Brokerage,
+  ): Promise<BrokerProfile> {
+    brokerProfile.brokerage = brokerage;
+    const updated = await this.brokerProfileRepository.save(brokerProfile);
+
+    this.logger.log(
+      `Broker ${brokerProfile.id} assigned to brokerage ${brokerage.name}`,
+    );
+
+    return updated;
   }
 }
