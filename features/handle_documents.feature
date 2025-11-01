@@ -53,12 +53,13 @@ Feature: Handle documents
     And the transaction has a document named "Purchase Agreement" with status "Awaiting Signatures"
     When the real estate agent requests a sign for the document of party interested
     Then the document could be signed by the interested party
-
-  Scenario: Correct a document
+    
+Scenario: Correct a document
     Given a transaction of "Purchase" created by the real estate agent "Jane Smith" for the property "123 Main St"
     And the transaction has a document named "Purchase Agreement" with status "Rejected"
     When the real estate agent corrects the document after rejection
     Then the document status should be changed to "In Edition"
     And the document should be editable
+  
       
 

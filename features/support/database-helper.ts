@@ -33,6 +33,9 @@ import { StatusManager } from '../../src/documents/states/document-state-manager
 import { Signature } from '../../src/documents/entities/signatures.entity';
 import { SupportingProfessionalProfile } from '../../src/users/entities/supporting-professional-profile.entity';
 import { SignatureService } from '../../src/documents/services/signature.service';
+import { BrokerageService } from '../../src/users/services/brokerage.service';
+import { BrokerProfilesService } from '../../src/users/services/broker-profiles.service';
+import { BrokerProfile } from '../../src/users/entities/broker-profile.entity';
 
 // Lazy initialization functions
 export function getRepositories() {
@@ -45,6 +48,7 @@ export function getRepositories() {
       RealEstateAgentProfile,
     ),
     clientProfileRepository: dataSource.getRepository(ClientProfile),
+    brokerProfileRepository: dataSource.getRepository(BrokerProfile),
     brokerageRepository: dataSource.getRepository(Brokerage),
     supportingProfessionalRepository: dataSource.getRepository(
       SupportingProfessionalProfile,
@@ -70,6 +74,22 @@ export function getServices() {
     repositories.transactionRepository,
     userService,
   );
+
+  // Create brokerageService (no circular dependency anymore)
+  const brokerageService = new BrokerageService(
+    repositories.brokerageRepository,
+    repositories.brokerProfileRepository,
+    userService,
+  );
+
+  // Create brokerProfilesService (with brokerageService)
+  const brokerProfilesService = new BrokerProfilesService(
+    repositories.userRepository,
+    repositories.brokerProfileRepository,
+    userService,
+    brokerageService,
+  );
+
   const clientProfilesService = new ClientProfilesService(
     repositories.userRepository,
     repositories.clientProfileRepository,
@@ -78,15 +98,15 @@ export function getServices() {
   const agentProfilesService = new AgentProfilesService(
     repositories.userRepository,
     repositories.realEstateAgentProfileRepository,
-    repositories.brokerageRepository,
     userService,
+    brokerageService,
   );
   const supportingProfessionalProfilesService =
     new SupportingProfessionalsService(
       repositories.userRepository,
       repositories.supportingProfessionalRepository,
-      repositories.brokerageRepository,
       userService,
+      brokerageService,
     );
 
   const propertyService = new PropertiesService(
@@ -244,6 +264,7 @@ export function getServices() {
     itemService,
     userService,
     clientProfilesService,
+    brokerProfilesService,
     agentProfilesService,
     supportingProfessionalProfilesService,
     propertyService,
