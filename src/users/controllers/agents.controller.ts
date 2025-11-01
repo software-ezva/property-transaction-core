@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Req, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Req, Param } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -6,6 +6,7 @@ import {
   ApiBody,
   ApiBadRequestResponse,
   ApiParam,
+  ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { User } from '../entities/user.entity';
@@ -16,6 +17,7 @@ import { CreateAgentProfileDto } from '../dto/create-agent-profile.dto';
 import { ProfileResponseDto } from '../dto/profile-response.dto';
 import { SimpleUserResponseDto } from '../dto/simple-user-response.dto';
 import { Auth0User } from '../interfaces/auth0-user.interface';
+import { JoinBrokerageWithCodeDto } from '../dto/join-brokerage-with-code.dto';
 
 interface AuthenticatedRequest extends Request {
   user: Auth0User;
@@ -71,7 +73,6 @@ export class AgentsController extends BaseProfileController {
     @Body() dto: CreateAgentProfileDto,
   ): Promise<ProfileResponseDto> {
     try {
-      this.validateAuthentication(req);
       const profile = await this.agentProfilesService.assignAgentProfile(
         req.user.sub,
         dto,
@@ -127,6 +128,42 @@ export class AgentsController extends BaseProfileController {
       return await this.agentProfilesService.getAgentsByBrokerage(brokerageId);
     } catch (error) {
       this.handleError(error, 'retrieve agents by brokerage');
+    }
+  }
+
+  @Put('me/join-brokerage')
+  @ApiOperation({
+    summary: 'Join brokerage using access code',
+    description:
+      'Allows the authenticated agent to join a brokerage using a 6-character access code (format: ABC123).',
+  })
+  @ApiBody({
+    type: JoinBrokerageWithCodeDto,
+    description: 'Access code to join the brokerage',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully joined the brokerage',
+    type: RealEstateAgentProfile,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid access code format',
+  })
+  @ApiNotFoundResponse({
+    description: 'Agent or brokerage not found',
+  })
+  async joinBrokerageWithCode(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: JoinBrokerageWithCodeDto,
+  ): Promise<RealEstateAgentProfile> {
+    try {
+      this.validateAuthentication(req);
+      return await this.agentProfilesService.joinBrokerageWithCode(
+        req.user.sub,
+        dto.accessCode,
+      );
+    } catch (error) {
+      this.handleError(error, 'join brokerage with access code', req.user?.sub);
     }
   }
 }

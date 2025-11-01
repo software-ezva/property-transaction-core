@@ -1,10 +1,23 @@
-import { Logger, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Logger,
+  HttpException,
+  HttpStatus,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   ApiUnauthorizedResponse,
   ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Auth0User } from '../interfaces/auth0-user.interface';
+import {
+  UserNotFoundException,
+  BrokerProfileNotFoundException,
+  BrokerNotAssignedToBrokerageException,
+  BrokerageNotFoundException,
+  ProfileNotFoundException,
+  UserAlreadyHasAProfileException,
+} from '../exceptions';
 
 interface AuthenticatedRequest extends Request {
   user: Auth0User;
@@ -40,10 +53,27 @@ export abstract class BaseProfileController {
       error instanceof Error ? error.stack : String(error),
     );
 
+    // Handle domain-specific exceptions
+    if (
+      error instanceof UserNotFoundException ||
+      error instanceof BrokerProfileNotFoundException ||
+      error instanceof BrokerNotAssignedToBrokerageException ||
+      error instanceof BrokerageNotFoundException ||
+      error instanceof ProfileNotFoundException
+    ) {
+      throw new NotFoundException(error.message);
+    }
+
+    if (error instanceof UserAlreadyHasAProfileException) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+
+    // Handle NestJS HttpExceptions
     if (error instanceof HttpException) {
       throw error;
     }
 
+    // Default: Internal server error
     throw new HttpException(
       `Internal server error during ${operation}`,
       HttpStatus.INTERNAL_SERVER_ERROR,
