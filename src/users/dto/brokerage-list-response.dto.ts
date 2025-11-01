@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
-export class BrokerageResponseDto {
+export class BrokerageListResponseDto {
   @ApiProperty({ example: 'uuid-string', description: 'Unique identifier' })
   @Expose()
   id: string;
@@ -60,21 +60,4 @@ export class BrokerageResponseDto {
   })
   @Expose()
   email?: string;
-
-  @ApiProperty({
-    example: 'ABC123',
-    description:
-      'Access code for profiles to join the brokerage (format: ABC123 - 3 uppercase letters + 3 digits)',
-    minLength: 6,
-    maxLength: 6,
-  })
-  @Expose()
-  accessCode: string;
-
-  @ApiProperty({
-    example: '2023-12-01T10:30:00Z',
-    description: 'Date when the brokerage was created',
-  })
-  @Expose()
-  createdAt: Date;
 }

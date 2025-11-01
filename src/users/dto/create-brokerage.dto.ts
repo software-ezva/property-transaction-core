@@ -12,58 +12,56 @@ export class CreateBrokerageDto {
   @ApiProperty({
     example: '123 Main Street',
     description: 'Physical address of the brokerage',
-    required: false,
+    required: true,
   })
   @IsString()
   @IsOptional()
-  address?: string;
+  address: string;
 
   @ApiProperty({
     example: 'Miami-Dade',
     description: 'County where the brokerage is located',
-    required: false,
+    required: true,
   })
   @IsString()
   @IsOptional()
-  county?: string;
+  county: string;
 
   @ApiProperty({
     example: 'Miami',
     description: 'City where the brokerage is located',
-    required: false,
+    required: true,
   })
   @IsString()
   @IsOptional()
-  city?: string;
+  city: string;
 
   @ApiProperty({
     example: 'FL',
     description: 'State abbreviation (e.g., CA, NY)',
-    required: false,
+    required: true,
   })
   @IsString()
   @IsOptional()
-  state?: string;
+  state: string;
 
   @ApiProperty({
     example: '+15551234567',
-    description: 'Main phone number of the brokerage',
-    required: false,
+    description: 'Phone number (US format)',
+    required: true,
   })
   @IsString()
-  @IsOptional()
   @Matches(/^(\+?1)?[2-9][0-9]{2}[2-9][0-9]{2}[0-9]{4}$/, {
     message:
       'Phone number must be a valid US phone number (10 digits, area code cannot start with 0 or 1)',
   })
-  phoneNumber?: string;
+  phoneNumber: string;
 
   @ApiProperty({
     example: 'info@sunshineRealty.com',
     description: 'Email address of the brokerage',
-    required: false,
+    required: true,
   })
   @IsEmail()
-  @IsOptional()
-  email?: string;
+  email: string;
 }

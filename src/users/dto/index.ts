@@ -11,3 +11,5 @@ export * from './sync-user-response.dto';
 export * from './update-brokerage.dto';
 export * from './update-user.dto';
 export * from './brokerage-response.dto';
+export * from './brokerage-detail-response.dto';
+export * from './join-brokerage-with-code.dto';
