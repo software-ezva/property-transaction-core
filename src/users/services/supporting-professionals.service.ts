@@ -4,11 +4,17 @@ import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Profile, ProfileType } from '../entities/profile.entity';
 import { SupportingProfessionalProfile } from '../entities/supporting-professional-profile.entity';
-import { Brokerage } from '../entities/brokerage.entity';
 import { CreateSupportingProfessionalProfileDto } from '../dto/create-supporting-professional-profile.dto';
-import { UserAlreadyHasAProfileException } from '../exceptions';
+import {
+  UserAlreadyHasAProfileException,
+  SupportingProfessionalNotFoundException,
+  InvalidAccessCodeFormatException,
+  AlreadyAssociatedWithBrokerageException,
+} from '../exceptions';
 import { UsersService } from './users.service';
+import { BrokerageService } from './brokerage.service';
 import { ProfessionalType } from '../../common/enums';
+import { AccessCodeGenerator } from '../utils/access-code.generator';
 
 @Injectable()
 export class SupportingProfessionalsService {
@@ -19,9 +25,8 @@ export class SupportingProfessionalsService {
     private userRepository: Repository<User>,
     @InjectRepository(SupportingProfessionalProfile)
     private supportingProfessionalRepository: Repository<SupportingProfessionalProfile>,
-    @InjectRepository(Brokerage)
-    private brokerageRepository: Repository<Brokerage>,
     private readonly userService: UsersService,
+    private readonly brokerageService: BrokerageService,
   ) {}
 
   async assignSupportingProfessionalProfile(
@@ -106,57 +111,61 @@ export class SupportingProfessionalsService {
     });
   }
 
-  async assignToBrokerage(
-    professionalId: string,
-    brokerageId: string,
+  async joinBrokerageWithCode(
+    auth0Id: string,
+    accessCode: string,
   ): Promise<SupportingProfessionalProfile> {
-    const professional = await this.supportingProfessionalRepository.findOne({
-      where: { id: professionalId },
-      relations: ['brokerages'],
-    });
-
-    if (!professional) {
-      throw new Error('Supporting professional not found');
+    // Validate access code format
+    if (!AccessCodeGenerator.isValid(accessCode)) {
+      throw new InvalidAccessCodeFormatException(accessCode);
     }
 
-    const brokerage = await this.brokerageRepository.findOne({
-      where: { uuid: brokerageId },
-    });
-
-    if (!brokerage) {
-      throw new Error('Brokerage not found');
+    const user = await this.userService.getUserByAuth0Id(auth0Id);
+    if (!user.isSupportingProfessional()) {
+      this.logger.warn(
+        `User with ID ${auth0Id} is not a supporting professional`,
+      );
+      throw new SupportingProfessionalNotFoundException(user.id);
     }
 
-    // Check if already assigned
-    const isAlreadyAssigned = professional.brokerages.some(
-      (b) => b.uuid === brokerageId,
+    const professional = user.profile as SupportingProfessionalProfile;
+
+    // Load brokerages relation
+    const professionalWithBrokerages =
+      await this.supportingProfessionalRepository.findOne({
+        where: { id: professional.id },
+        relations: ['brokerages'],
+      });
+
+    if (!professionalWithBrokerages) {
+      throw new SupportingProfessionalNotFoundException(professional.id);
+    }
+
+    // Find brokerage by access code
+    const brokerage = await this.brokerageService.findByAccessCode(accessCode);
+
+    // Check if already associated
+    const alreadyAssociated = professionalWithBrokerages.brokerages.some(
+      (b) => b.id === brokerage.id,
     );
 
-    if (!isAlreadyAssigned) {
-      professional.brokerages.push(brokerage);
-      await this.supportingProfessionalRepository.save(professional);
+    if (alreadyAssociated) {
+      this.logger.warn(
+        `Supporting professional ${professional.id} is already associated with brokerage ${brokerage.name}`,
+      );
+      throw new AlreadyAssociatedWithBrokerageException(brokerage.name);
     }
 
-    return professional;
-  }
-
-  async removeFromBrokerage(
-    professionalId: string,
-    brokerageId: string,
-  ): Promise<SupportingProfessionalProfile> {
-    const professional = await this.supportingProfessionalRepository.findOne({
-      where: { id: professionalId },
-      relations: ['brokerages'],
-    });
-
-    if (!professional) {
-      throw new Error('Supporting professional not found');
-    }
-
-    professional.brokerages = professional.brokerages.filter(
-      (b) => b.uuid !== brokerageId,
+    // Add brokerage to the list
+    professionalWithBrokerages.brokerages.push(brokerage);
+    const updated = await this.supportingProfessionalRepository.save(
+      professionalWithBrokerages,
     );
 
-    return await this.supportingProfessionalRepository.save(professional);
+    this.logger.log(
+      `Supporting professional ${professional.id} joined brokerage ${brokerage.name} using access code`,
+    );
+
+    return updated;
   }
 }
