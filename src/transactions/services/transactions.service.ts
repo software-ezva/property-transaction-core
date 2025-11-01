@@ -15,7 +15,6 @@ import {
   WorkflowTemplateDoesNotExistException,
   DuplicateTransactionException,
   TransactionNotFoundException,
-
   SupportingProfessionalNotFoundException,
   SupportingProfessionalAlreadyAssignedException,
 } from '../expections';
