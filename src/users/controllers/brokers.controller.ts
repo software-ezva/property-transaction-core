@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Req, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Req, Param } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -6,16 +6,17 @@ import {
   ApiBody,
   ApiBadRequestResponse,
   ApiParam,
+  ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
-import { User } from '../entities/user.entity';
 import { BrokerProfile } from '../entities/broker-profile.entity';
 import { BaseProfileController } from './base-profile.controller';
 import { BrokerProfilesService } from '../services/broker-profiles.service';
 import { CreateBrokerProfileDto } from '../dto/create-broker-profile.dto';
 import { ProfileResponseDto } from '../dto/profile-response.dto';
-import { SimpleUserResponseDto } from '../dto/simple-user-response.dto';
 import { Auth0User } from '../interfaces/auth0-user.interface';
+import { BrokerageDetailResponseDto } from '../dto/brokerage-detail-response.dto';
+import { JoinBrokerageWithCodeDto } from '../dto/join-brokerage-with-code.dto';
 
 interface AuthenticatedRequest extends Request {
   user: Auth0User;
@@ -26,24 +27,6 @@ interface AuthenticatedRequest extends Request {
 export class BrokersController extends BaseProfileController {
   constructor(private readonly brokerProfilesService: BrokerProfilesService) {
     super();
-  }
-
-  @Get()
-  @ApiOperation({
-    summary: 'Get all brokers',
-    description: 'Retrieves a list of all users who have broker profiles.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Brokers retrieved successfully',
-    type: [SimpleUserResponseDto],
-  })
-  async getAllBrokers(): Promise<Partial<User>[]> {
-    try {
-      return await this.brokerProfilesService.getAllBrokers();
-    } catch (error) {
-      this.handleError(error, 'retrieve brokers');
-    }
   }
 
   @Post('')
@@ -128,6 +111,68 @@ export class BrokersController extends BaseProfileController {
       );
     } catch (error) {
       this.handleError(error, 'retrieve brokers by brokerage');
+    }
+  }
+
+  @Get('me/brokerage')
+  @ApiOperation({
+    summary: 'Get brokerage of authenticated broker',
+    description:
+      'Retrieves the complete brokerage information for the authenticated broker, including all agents, brokers, and supporting professionals with their name and email. Returns null if the broker is not assigned to any brokerage.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Brokerage details retrieved successfully or null if not assigned',
+    type: BrokerageDetailResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Broker profile not found',
+  })
+  async getMyBrokerage(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<BrokerageDetailResponseDto | null> {
+    try {
+      return await this.brokerProfilesService.getBrokerageByBroker(
+        req.user.sub,
+      );
+    } catch (error) {
+      this.handleError(error, 'retrieve my brokerage', req.user?.sub);
+    }
+  }
+
+  @Put('me/join-brokerage')
+  @ApiOperation({
+    summary: 'Join brokerage using access code',
+    description:
+      'Allows the authenticated broker to join a brokerage using a 6-character access code (format: ABC123).',
+  })
+  @ApiBody({
+    type: JoinBrokerageWithCodeDto,
+    description: 'Access code to join the brokerage',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully joined the brokerage',
+    type: BrokerProfile,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid access code format',
+  })
+  @ApiNotFoundResponse({
+    description: 'Broker or brokerage not found',
+  })
+  async joinBrokerageWithCode(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: JoinBrokerageWithCodeDto,
+  ): Promise<BrokerProfile> {
+    try {
+      return await this.brokerProfilesService.joinBrokerageWithCode(
+        req.user.sub,
+        dto.accessCode,
+      );
+    } catch (error) {
+      this.handleError(error, 'join brokerage with access code', req.user?.sub);
     }
   }
 }

@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Req,
-  Param,
-  Put,
-  Delete,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, Param, Put } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -15,6 +6,7 @@ import {
   ApiBody,
   ApiBadRequestResponse,
   ApiParam,
+  ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { User } from '../entities/user.entity';
@@ -25,6 +17,7 @@ import { CreateSupportingProfessionalProfileDto } from '../dto/create-supporting
 import { ProfileResponseDto } from '../dto/profile-response.dto';
 import { SimpleUserResponseDto } from '../dto/simple-user-response.dto';
 import { Auth0User } from '../interfaces/auth0-user.interface';
+import { JoinBrokerageWithCodeDto } from '../dto/join-brokerage-with-code.dto';
 
 interface AuthenticatedRequest extends Request {
   user: Auth0User;
@@ -125,71 +118,39 @@ export class SupportingProfessionalsController extends BaseProfileController {
     }
   }
 
-  @Put(':id/brokerage/:brokerageId')
+  @Put('me/join-brokerage')
   @ApiOperation({
-    summary: 'Assign supporting professional to brokerage',
+    summary: 'Join brokerage using access code',
     description:
-      'Assigns a supporting professional to work with a specific brokerage.',
+      'Allows the authenticated supporting professional to join a brokerage using a 6-character access code (format: ABC123).',
   })
-  @ApiParam({
-    name: 'id',
-    description: 'Supporting professional profile ID',
-    type: 'string',
-  })
-  @ApiParam({
-    name: 'brokerageId',
-    description: 'Brokerage ID',
-    type: 'string',
+  @ApiBody({
+    type: JoinBrokerageWithCodeDto,
+    description: 'Access code to join the brokerage',
   })
   @ApiResponse({
     status: 200,
-    description: 'Supporting professional assigned to brokerage successfully',
+    description: 'Successfully joined the brokerage',
+    type: SupportingProfessionalProfile,
   })
-  async assignToBrokerage(
-    @Param('id') professionalId: string,
-    @Param('brokerageId') brokerageId: string,
+  @ApiBadRequestResponse({
+    description: 'Invalid access code format or already associated',
+  })
+  @ApiNotFoundResponse({
+    description: 'Supporting professional or brokerage not found',
+  })
+  async joinBrokerageWithCode(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: JoinBrokerageWithCodeDto,
   ): Promise<SupportingProfessionalProfile> {
     try {
-      return await this.supportingProfessionalsService.assignToBrokerage(
-        professionalId,
-        brokerageId,
+      this.validateAuthentication(req);
+      return await this.supportingProfessionalsService.joinBrokerageWithCode(
+        req.user.sub,
+        dto.accessCode,
       );
     } catch (error) {
-      this.handleError(error, 'assign supporting professional to brokerage');
-    }
-  }
-
-  @Delete(':id/brokerage/:brokerageId')
-  @ApiOperation({
-    summary: 'Remove supporting professional from brokerage',
-    description:
-      'Removes a supporting professional from working with a specific brokerage.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Supporting professional profile ID',
-    type: 'string',
-  })
-  @ApiParam({
-    name: 'brokerageId',
-    description: 'Brokerage ID',
-    type: 'string',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Supporting professional removed from brokerage successfully',
-  })
-  async removeFromBrokerage(
-    @Param('id') professionalId: string,
-    @Param('brokerageId') brokerageId: string,
-  ): Promise<SupportingProfessionalProfile> {
-    try {
-      return await this.supportingProfessionalsService.removeFromBrokerage(
-        professionalId,
-        brokerageId,
-      );
-    } catch (error) {
-      this.handleError(error, 'remove supporting professional from brokerage');
+      this.handleError(error, 'join brokerage with access code', req.user?.sub);
     }
   }
 }
