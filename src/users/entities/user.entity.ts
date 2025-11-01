@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Transaction } from '../../transactions/entities/transaction.entity';
 import { Profile, ProfileType } from './profile.entity';
+import { getBrokerageRelationForProfileType } from '../../common/utils/profile-relation.mapper';
 
 @Entity('users')
 @Index(['email'])
@@ -75,12 +76,16 @@ export class User {
     return `${this.firstName || ''} ${this.lastName || ''}`.trim();
   }
 
-  getProfileInstance(): Profile | null {
-    return this.profile || null;
+  getProfileType(): string | null {
+    return this.profile?.profileType || null;
   }
 
   isRealEstateAgent(): boolean {
     return this.profile?.profileType === ProfileType.REAL_ESTATE_AGENT;
+  }
+
+  isBroker(): boolean {
+    return this.profile?.profileType === ProfileType.BROKER;
   }
 
   isClient(): boolean {
@@ -89,6 +94,14 @@ export class User {
 
   isSupportingProfessional(): boolean {
     return this.profile?.profileType === ProfileType.SUPPORTING_PROFESSIONAL;
+  }
+
+  getProfileRelation():
+    | 'brokers'
+    | 'agents'
+    | 'supportingProfessionals'
+    | null {
+    return getBrokerageRelationForProfileType(this.profile?.profileType);
   }
 
   toString(): string {

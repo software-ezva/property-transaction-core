@@ -13,7 +13,7 @@ import { SupportingProfessionalProfile } from './supporting-professional-profile
 @Entity('brokerages')
 export class Brokerage {
   @PrimaryGeneratedColumn('uuid')
-  uuid: string;
+  id: string;
 
   @Column({
     type: 'varchar',
@@ -70,6 +70,16 @@ export class Brokerage {
     comment: 'Email address of the brokerage',
   })
   email: string;
+
+  @Column({
+    type: 'varchar',
+    length: 6,
+    unique: true,
+    nullable: false,
+    comment:
+      'Access code for profiles to join the brokerage (format: ABC123 - 3 uppercase letters + 3 digits)',
+  })
+  accessCode: string;
 
   @OneToMany(() => RealEstateAgentProfile, (agent) => agent.brokerage)
   agents: RealEstateAgentProfile[];
