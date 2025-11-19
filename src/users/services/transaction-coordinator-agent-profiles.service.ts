@@ -3,9 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Profile, ProfileType } from '../entities/profile.entity';
-import { RealEstateAgentProfile } from '../entities/real-estate-agent-profile.entity';
+import { TransactionCoordinatorAgentProfile } from '../entities/transaction-coordinator-agent-profile.entity';
 import { Brokerage } from '../entities/brokerage.entity';
-import { CreateAgentProfileDto } from '../dto/create-agent-profile.dto';
+import { CreateTransactionCoordinatorAgentProfileDto } from '../dto/create-transaction-coordinator-agent-profile.dto';
 import {
   UserAlreadyHasAProfileException,
   AgentProfileNotFoundException,
@@ -18,28 +18,32 @@ import { BrokerageService } from './brokerage.service';
 import { AccessCodeGenerator } from '../utils/access-code.generator';
 
 @Injectable()
-export class AgentProfilesService {
-  private readonly logger = new Logger(AgentProfilesService.name);
+export class TransactionCoordinatorAgentProfilesService {
+  private readonly logger = new Logger(
+    TransactionCoordinatorAgentProfilesService.name,
+  );
 
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    @InjectRepository(RealEstateAgentProfile)
-    private agentProfileRepository: Repository<RealEstateAgentProfile>,
+    @InjectRepository(TransactionCoordinatorAgentProfile)
+    private transactionCoordinatorAgentProfileRepository: Repository<TransactionCoordinatorAgentProfile>,
     private readonly userService: UsersService,
     private readonly brokerageService: BrokerageService,
   ) {}
 
-  async assignAgentProfile(
+  async assignTransactionCoordinatorAgentProfile(
     auth0Id: string,
-    dto: CreateAgentProfileDto,
+    dto: CreateTransactionCoordinatorAgentProfileDto,
   ): Promise<Profile> {
     const user = await this.userService.getUserByAuth0Id(auth0Id);
 
-    const existingProfile = user.profile as RealEstateAgentProfile | undefined;
+    const existingProfile = user.profile as
+      | TransactionCoordinatorAgentProfile
+      | undefined;
     if (
       existingProfile &&
-      existingProfile.profileType === ProfileType.REAL_ESTATE_AGENT
+      existingProfile.profileType === ProfileType.TRANSACTION_COORDINATOR_AGENT
     ) {
       this.logger.warn(
         `User already has a profile of type: ${existingProfile.profileType}`,
@@ -47,7 +51,7 @@ export class AgentProfilesService {
       throw new UserAlreadyHasAProfileException(existingProfile.profileType);
     }
 
-    const profile = await this.createAgent(
+    const profile = await this.createTransactionCoordinatorAgent(
       user,
       dto.esign_name,
       dto.esign_initials,
@@ -62,37 +66,40 @@ export class AgentProfilesService {
     return profile;
   }
 
-  async createAgent(
+  async createTransactionCoordinatorAgent(
     user: User,
     esign_name: string,
     esign_initials: string,
     phoneNumber: string,
     licenseNumber: string,
     mlsNumber?: string,
-  ): Promise<RealEstateAgentProfile> {
+  ): Promise<TransactionCoordinatorAgentProfile> {
     let brokerage: Brokerage | undefined;
 
-    const agentProfile = this.agentProfileRepository.create({
-      user,
-      profileType: ProfileType.REAL_ESTATE_AGENT,
-      esignName: esign_name,
-      esignInitials: esign_initials,
-      phoneNumber: phoneNumber,
-      licenseNumber: licenseNumber,
-      mlsNumber: mlsNumber,
-      brokerage: brokerage,
-    });
+    const agentProfile =
+      this.transactionCoordinatorAgentProfileRepository.create({
+        user,
+        profileType: ProfileType.TRANSACTION_COORDINATOR_AGENT,
+        esignName: esign_name,
+        esignInitials: esign_initials,
+        phoneNumber: phoneNumber,
+        licenseNumber: licenseNumber,
+        mlsNumber: mlsNumber,
+        brokerage: brokerage,
+      });
 
-    return await this.agentProfileRepository.save(agentProfile);
+    return await this.transactionCoordinatorAgentProfileRepository.save(
+      agentProfile,
+    );
   }
 
-  async getAllAgents(): Promise<Partial<User>[]> {
+  async getAllTransactionCoordinatorsAgents(): Promise<Partial<User>[]> {
     const agents = await this.userRepository
       .createQueryBuilder('user')
       .select(['user.id', 'user.firstName', 'user.lastName', 'user.email'])
       .innerJoin('user.profile', 'profile')
       .where('profile.profileType = :profileType', {
-        profileType: ProfileType.REAL_ESTATE_AGENT,
+        profileType: ProfileType.TRANSACTION_COORDINATOR_AGENT,
       })
       .getMany();
 
@@ -100,8 +107,10 @@ export class AgentProfilesService {
     return agents;
   }
 
-  async getAgentById(agentId: string): Promise<RealEstateAgentProfile | null> {
-    return await this.agentProfileRepository.findOne({
+  async getTransactionCoordinatorAgentById(
+    agentId: string,
+  ): Promise<TransactionCoordinatorAgentProfile | null> {
+    return await this.transactionCoordinatorAgentProfileRepository.findOne({
       where: { id: agentId },
       relations: ['user', 'brokerage'],
     });
@@ -109,8 +118,8 @@ export class AgentProfilesService {
 
   async getAgentsByBrokerage(
     brokerageId: string,
-  ): Promise<RealEstateAgentProfile[]> {
-    return await this.agentProfileRepository.find({
+  ): Promise<TransactionCoordinatorAgentProfile[]> {
+    return await this.transactionCoordinatorAgentProfileRepository.find({
       where: { brokerage: { id: brokerageId } },
       relations: ['user', 'brokerage'],
     });
@@ -119,19 +128,19 @@ export class AgentProfilesService {
   async joinBrokerageWithCode(
     auth0Id: string,
     accessCode: string,
-  ): Promise<RealEstateAgentProfile> {
+  ): Promise<TransactionCoordinatorAgentProfile> {
     // Validate access code format
     if (!AccessCodeGenerator.isValid(accessCode)) {
       throw new InvalidAccessCodeFormatException(accessCode);
     }
 
     const user = await this.userService.getUserByAuth0Id(auth0Id);
-    if (!user.isRealEstateAgent()) {
+    if (!user.isTransactionCoordinatoralAgent()) {
       this.logger.warn(`User with ID ${auth0Id} is not a real estate agent`);
       throw new AgentProfileNotFoundException(user.id);
     }
     // Get agent profile
-    const agent = user.profile as RealEstateAgentProfile;
+    const agent = user.profile as TransactionCoordinatorAgentProfile;
 
     if (agent.brokerage != null) {
       this.logger.warn(
@@ -149,7 +158,8 @@ export class AgentProfilesService {
 
     // Assign agent to brokerage
     agent.brokerage = brokerage;
-    const updated = await this.agentProfileRepository.save(agent);
+    const updated =
+      await this.transactionCoordinatorAgentProfileRepository.save(agent);
 
     this.logger.log(
       `Agent ${agent.id} joined brokerage ${brokerage.name} using access code`,

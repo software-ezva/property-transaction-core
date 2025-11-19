@@ -49,7 +49,7 @@ export class TransactionsService {
     try {
       // Fetch agent, client(optional) and property
       const agent = await this.userService.getUserByAuth0Id(agentId);
-      if (!agent.isRealEstateAgent()) {
+      if (!agent.isTransactionCoordinatoralAgent()) {
         this.logger.warn(`User with ID ${agentId} is not a real estate agent`);
         throw new UserIsNotRealEstateAgentException();
       }
@@ -103,7 +103,9 @@ export class TransactionsService {
   async findAll(userId: string): Promise<TransactionWithSummaryInfo[]> {
     const user = await this.userService.getUserByAuth0Id(userId);
     // get role and build a where clause dynamically
-    const userRole = user.isRealEstateAgent() ? 'agent' : 'client';
+    const userRole = user.isTransactionCoordinatoralAgent()
+      ? 'agent'
+      : 'client';
     const whereClause = { [userRole]: { id: user.id } };
 
     const transactions = await this.transactionRepository.find({

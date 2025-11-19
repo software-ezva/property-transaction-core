@@ -80,6 +80,12 @@ export class User {
     return this.profile?.profileType || null;
   }
 
+  isTransactionCoordinatoralAgent(): boolean {
+    return (
+      this.profile?.profileType === ProfileType.TRANSACTION_COORDINATOR_AGENT
+    );
+  }
+
   isRealEstateAgent(): boolean {
     return this.profile?.profileType === ProfileType.REAL_ESTATE_AGENT;
   }

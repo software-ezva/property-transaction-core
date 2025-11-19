@@ -1,13 +1,11 @@
 Feature: Carry out of transaction
-  As a real estate agent,
+  As a transaction coordinator agent,
   I want to track the workflow of the transaction
   so that it guides me step-by-step through completing a property transaction.
 
-#TODO: bussines rules
-
   Scenario: Start a transaction
-    Given a transaction "Listing for lease" created by a real estate agent "Jane Smith" for the property "123 Main St"
-    When the real estate agent chooses a workflow template of "Listing for sale" for the transaction
+    Given a transaction "Listing for lease" created by a transaction coordinator agent "Jane Smith" for the property "123 Main St"
+    When the transaction coordinator agent chooses a workflow template of "Listing for sale" for the transaction
     Then a copy of the workflow template would be included in the transaction with its default set of checklists
         | Checklist Name |
         | A              |
@@ -16,7 +14,7 @@ Feature: Carry out of transaction
 
   Scenario Outline: Custom the started workflow
     Given a set of checklists indexed "<set_of_default_checklists>" to the workflow
-    When the agent adds a checklist named "<new_checklist>"
+    When the transaction coordinator agent adds a checklist named "<new_checklist>"
     Then the new set of checklists should be "<set_of_updated_checklists>" for the started workflow
 
     Examples:
@@ -30,7 +28,7 @@ Feature: Carry out of transaction
     Given a transaction with its workflow of "<type_of_transaction>"
     And a checklist indexed "<checklist_name>" to the workflow
     And a set of items indexed to the checklist "<set_of_default_items>"
-    When the agent adds an item named "<new_item>" to the checklist "<checklist_name>"
+    When the transaction coordinator agent adds an item named "<new_item>" to the checklist "<checklist_name>"
     Then the new set of items should be "<set_of_updated_items>" for the checklist "<checklist_name>" for the started workflow
 
     Examples:
@@ -43,7 +41,7 @@ Feature: Carry out of transaction
 
   Scenario Outline: Mark checklist items
     Given the item named "<item>" that belongs to workflow
-	When real estate agents checks the step as "<state>"
+	When transaction coordinator agent checks the step as "<state>"
     Then the item "<item>" change its status to "<state>"
     And the system will send a notification of completion
 

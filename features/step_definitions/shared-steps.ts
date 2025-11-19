@@ -25,7 +25,7 @@ Given(
   ) {
     const {
       userService,
-      agentProfilesService,
+      transactionCoordinatorAgentProfilesService,
       propertyService,
       transactionService,
     } = getServices();
@@ -39,12 +39,16 @@ Given(
     );
 
     // Create real estate agent profile
-    await agentProfilesService.assignAgentProfile(this.agent.auth0Id, {
-      esign_name: agentName,
-      esign_initials: agentName.charAt(0).toUpperCase(),
-      phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
-      license_number: faker.string.alphanumeric(10),
-    });
+    await transactionCoordinatorAgentProfilesService.assignTransactionCoordinatorAgentProfile(
+      this.agent.auth0Id,
+      {
+        esign_name: agentName,
+        esign_initials: agentName.charAt(0).toUpperCase(),
+        phone_number:
+          '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
+        license_number: faker.string.alphanumeric(10),
+      },
+    );
 
     // Create property
     this.property = await propertyService.create({

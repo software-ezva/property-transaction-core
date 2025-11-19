@@ -12,9 +12,10 @@ import { User } from './user.entity';
 
 export enum ProfileType {
   CLIENT = 'client',
-  REAL_ESTATE_AGENT = 'real_estate_agent',
+  TRANSACTION_COORDINATOR_AGENT = 'transaction_coordinator_agent',
   SUPPORTING_PROFESSIONAL = 'supporting_professional',
   BROKER = 'broker',
+  REAL_ESTATE_AGENT = 'real_estate_agent',
 }
 
 @Entity('profiles')

@@ -10,10 +10,10 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { User } from '../entities/user.entity';
-import { RealEstateAgentProfile } from '../entities/real-estate-agent-profile.entity';
+import { TransactionCoordinatorAgentProfile } from '../entities/transaction-coordinator-agent-profile.entity';
 import { BaseProfileController } from './base-profile.controller';
-import { AgentProfilesService } from '../services/agent-profiles.service';
-import { CreateAgentProfileDto } from '../dto/create-agent-profile.dto';
+import { TransactionCoordinatorAgentProfilesService } from '../services/transaction-coordinator-agent-profiles.service';
+import { CreateTransactionCoordinatorAgentProfileDto } from '../dto/create-transaction-coordinator-agent-profile.dto';
 import { ProfileResponseDto } from '../dto/profile-response.dto';
 import { SimpleUserResponseDto } from '../dto/simple-user-response.dto';
 import { Auth0User } from '../interfaces/auth0-user.interface';
@@ -23,10 +23,12 @@ interface AuthenticatedRequest extends Request {
   user: Auth0User;
 }
 
-@Controller('agents')
-@ApiTags('agents')
+@Controller('transaction-coordinators-agents')
+@ApiTags('transaction-coordinators-agents')
 export class AgentsController extends BaseProfileController {
-  constructor(private readonly agentProfilesService: AgentProfilesService) {
+  constructor(
+    private readonly agentProfilesService: TransactionCoordinatorAgentProfilesService,
+  ) {
     super();
   }
 
@@ -41,9 +43,9 @@ export class AgentsController extends BaseProfileController {
     description: 'Agents retrieved successfully',
     type: [SimpleUserResponseDto],
   })
-  async getAllAgents(): Promise<Partial<User>[]> {
+  async getAllTransactionCoordinatorsAgents(): Promise<Partial<User>[]> {
     try {
-      return await this.agentProfilesService.getAllAgents();
+      return await this.agentProfilesService.getAllTransactionCoordinatorsAgents();
     } catch (error) {
       this.handleError(error, 'retrieve agents');
     }
@@ -56,7 +58,7 @@ export class AgentsController extends BaseProfileController {
       'Creates or updates a real estate agent profile for the authenticated user.',
   })
   @ApiBody({
-    type: CreateAgentProfileDto,
+    type: CreateTransactionCoordinatorAgentProfileDto,
     description:
       'Agent profile data including license and e-signature information',
   })
@@ -68,15 +70,16 @@ export class AgentsController extends BaseProfileController {
   @ApiBadRequestResponse({
     description: 'Invalid agent profile data provided',
   })
-  async assignAgentProfile(
+  async assignTransactionCoordinatorAgentProfile(
     @Req() req: AuthenticatedRequest,
-    @Body() dto: CreateAgentProfileDto,
+    @Body() dto: CreateTransactionCoordinatorAgentProfileDto,
   ): Promise<ProfileResponseDto> {
     try {
-      const profile = await this.agentProfilesService.assignAgentProfile(
-        req.user.sub,
-        dto,
-      );
+      const profile =
+        await this.agentProfilesService.assignTransactionCoordinatorAgentProfile(
+          req.user.sub,
+          dto,
+        );
       return { profile };
     } catch (error) {
       this.handleError(error, 'assign agent profile', req.user?.sub);
@@ -97,37 +100,15 @@ export class AgentsController extends BaseProfileController {
     status: 200,
     description: 'Agent retrieved successfully',
   })
-  async getAgentById(
+  async getTransactionCoordinatorAgentById(
     @Param('id') agentId: string,
-  ): Promise<RealEstateAgentProfile | null> {
+  ): Promise<TransactionCoordinatorAgentProfile | null> {
     try {
-      return await this.agentProfilesService.getAgentById(agentId);
+      return await this.agentProfilesService.getTransactionCoordinatorAgentById(
+        agentId,
+      );
     } catch (error) {
       this.handleError(error, 'retrieve agent by ID');
-    }
-  }
-
-  @Get('brokerage/:brokerageId')
-  @ApiOperation({
-    summary: 'Get agents by brokerage',
-    description: 'Retrieves all agents working for a specific brokerage.',
-  })
-  @ApiParam({
-    name: 'brokerageId',
-    description: 'Brokerage ID',
-    type: 'string',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Agents retrieved successfully',
-  })
-  async getAgentsByBrokerage(
-    @Param('brokerageId') brokerageId: string,
-  ): Promise<RealEstateAgentProfile[]> {
-    try {
-      return await this.agentProfilesService.getAgentsByBrokerage(brokerageId);
-    } catch (error) {
-      this.handleError(error, 'retrieve agents by brokerage');
     }
   }
 
@@ -144,7 +125,7 @@ export class AgentsController extends BaseProfileController {
   @ApiResponse({
     status: 200,
     description: 'Successfully joined the brokerage',
-    type: RealEstateAgentProfile,
+    type: TransactionCoordinatorAgentProfile,
   })
   @ApiBadRequestResponse({
     description: 'Invalid access code format',
@@ -155,7 +136,7 @@ export class AgentsController extends BaseProfileController {
   async joinBrokerageWithCode(
     @Req() req: AuthenticatedRequest,
     @Body() dto: JoinBrokerageWithCodeDto,
-  ): Promise<RealEstateAgentProfile> {
+  ): Promise<TransactionCoordinatorAgentProfile> {
     try {
       this.validateAuthentication(req);
       return await this.agentProfilesService.joinBrokerageWithCode(
