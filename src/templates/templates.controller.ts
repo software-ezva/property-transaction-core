@@ -32,6 +32,7 @@ import {
   InvalidTemplateDataException,
   TemplateInUseException,
 } from './exceptions';
+import { UuidValidationPipe } from '../common/validators';
 
 @Controller('templates')
 @ApiTags('templates')
@@ -138,7 +139,9 @@ export class TemplatesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during template retrieval',
   })
-  async findOne(@Param('id') id: string): Promise<TemplateDetailDto> {
+  async findOne(
+    @Param('id', UuidValidationPipe) id: string,
+  ): Promise<TemplateDetailDto> {
     try {
       return await this.templatesService.findOne(id);
     } catch (error) {
@@ -193,7 +196,7 @@ export class TemplatesController {
     description: 'Internal server error during template update',
   })
   async update(
-    @Param('id') id: string,
+    @Param('id', UuidValidationPipe) id: string,
     @Body() updateTemplateDto: UpdateWorkflowTemplateDto,
   ): Promise<UpdateTemplateResponseDto> {
     try {
@@ -241,7 +244,7 @@ export class TemplatesController {
   @ApiInternalServerErrorResponse({
     description: 'Internal server error during template deletion',
   })
-  remove(@Param('id') id: string) {
+  remove(@Param('id', UuidValidationPipe) id: string) {
     try {
       return this.templatesService.remove(id);
     } catch (error) {
