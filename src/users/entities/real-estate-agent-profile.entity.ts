@@ -20,7 +20,7 @@ export class RealEstateAgentProfile extends Profile {
   })
   mlsNumber: string;
 
-  @ManyToOne(() => Brokerage, (brokerage) => brokerage.agents, {
+  @ManyToOne(() => Brokerage, (brokerage) => brokerage.realEstateAgents, {
     nullable: true,
     onDelete: 'SET NULL',
   })

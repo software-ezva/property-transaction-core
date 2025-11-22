@@ -103,7 +103,6 @@ export function getServices() {
       repositories.userRepository,
       repositories.transactionCoordinatorAgentProfileRepository,
       userService,
-      brokerageService,
     );
   const realEstateAgentProfilesService = new RealEstateAgentProfilesService(
     repositories.userRepository,

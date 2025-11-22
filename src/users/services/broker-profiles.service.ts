@@ -170,10 +170,12 @@ export class BrokerProfilesService {
   private mapBrokerageToDetailDto(
     brokerage: Brokerage,
   ): BrokerageDetailResponseDto {
-    const agents: ProfileSummaryDto[] = brokerage.agents.map((agent) => ({
-      email: agent.user.email,
-      fullName: agent.user.fullName,
-    }));
+    const agents: ProfileSummaryDto[] = brokerage.realEstateAgents.map(
+      (agent) => ({
+        email: agent.user.email,
+        fullName: agent.user.fullName,
+      }),
+    );
 
     const brokers: ProfileSummaryDto[] = brokerage.brokers.map((broker) => ({
       email: broker.user.email,
