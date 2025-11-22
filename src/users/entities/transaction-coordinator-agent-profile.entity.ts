@@ -1,6 +1,5 @@
-import { ChildEntity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { ChildEntity, Column } from 'typeorm';
 import { Profile, ProfileType } from './profile.entity';
-import { Brokerage } from './brokerage.entity';
 
 @ChildEntity(ProfileType.TRANSACTION_COORDINATOR_AGENT)
 export class TransactionCoordinatorAgentProfile extends Profile {
@@ -19,11 +18,4 @@ export class TransactionCoordinatorAgentProfile extends Profile {
     comment: 'MLS number',
   })
   mlsNumber: string;
-
-  @ManyToOne(() => Brokerage, (brokerage) => brokerage.agents, {
-    nullable: true,
-    onDelete: 'SET NULL',
-  })
-  @JoinColumn({ name: 'brokerageId' })
-  brokerage?: Brokerage;
 }

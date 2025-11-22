@@ -340,7 +340,7 @@ export class DocumentsService {
 
     const document = await this.getDocument(transactionId, agentId, documentId);
 
-    if (this.couldBeRequestedForSignatures(document)) {
+    if (!this.couldBeRequestedForSignatures(document)) {
       throw new DocumentNotReadyForSignaturesException(
         document.documentId,
         document.status,

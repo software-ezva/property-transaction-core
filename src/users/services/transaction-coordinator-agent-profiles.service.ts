@@ -4,18 +4,9 @@ import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Profile, ProfileType } from '../entities/profile.entity';
 import { TransactionCoordinatorAgentProfile } from '../entities/transaction-coordinator-agent-profile.entity';
-import { Brokerage } from '../entities/brokerage.entity';
 import { CreateTransactionCoordinatorAgentProfileDto } from '../dto/create-transaction-coordinator-agent-profile.dto';
-import {
-  UserAlreadyHasAProfileException,
-  AgentProfileNotFoundException,
-  InvalidAccessCodeFormatException,
-  AlreadyAssociatedWithBrokerageException,
-  BrokerageNotFoundException,
-} from '../exceptions';
+import { UserAlreadyHasAProfileException } from '../exceptions';
 import { UsersService } from './users.service';
-import { BrokerageService } from './brokerage.service';
-import { AccessCodeGenerator } from '../utils/access-code.generator';
 
 @Injectable()
 export class TransactionCoordinatorAgentProfilesService {
@@ -29,7 +20,6 @@ export class TransactionCoordinatorAgentProfilesService {
     @InjectRepository(TransactionCoordinatorAgentProfile)
     private transactionCoordinatorAgentProfileRepository: Repository<TransactionCoordinatorAgentProfile>,
     private readonly userService: UsersService,
-    private readonly brokerageService: BrokerageService,
   ) {}
 
   async assignTransactionCoordinatorAgentProfile(
@@ -74,8 +64,6 @@ export class TransactionCoordinatorAgentProfilesService {
     licenseNumber: string,
     mlsNumber?: string,
   ): Promise<TransactionCoordinatorAgentProfile> {
-    let brokerage: Brokerage | undefined;
-
     const agentProfile =
       this.transactionCoordinatorAgentProfileRepository.create({
         user,
@@ -85,7 +73,6 @@ export class TransactionCoordinatorAgentProfilesService {
         phoneNumber: phoneNumber,
         licenseNumber: licenseNumber,
         mlsNumber: mlsNumber,
-        brokerage: brokerage,
       });
 
     return await this.transactionCoordinatorAgentProfileRepository.save(
@@ -114,57 +101,5 @@ export class TransactionCoordinatorAgentProfilesService {
       where: { id: agentId },
       relations: ['user', 'brokerage'],
     });
-  }
-
-  async getAgentsByBrokerage(
-    brokerageId: string,
-  ): Promise<TransactionCoordinatorAgentProfile[]> {
-    return await this.transactionCoordinatorAgentProfileRepository.find({
-      where: { brokerage: { id: brokerageId } },
-      relations: ['user', 'brokerage'],
-    });
-  }
-
-  async joinBrokerageWithCode(
-    auth0Id: string,
-    accessCode: string,
-  ): Promise<TransactionCoordinatorAgentProfile> {
-    // Validate access code format
-    if (!AccessCodeGenerator.isValid(accessCode)) {
-      throw new InvalidAccessCodeFormatException(accessCode);
-    }
-
-    const user = await this.userService.getUserByAuth0Id(auth0Id);
-    if (!user.isTransactionCoordinatoralAgent()) {
-      this.logger.warn(`User with ID ${auth0Id} is not a real estate agent`);
-      throw new AgentProfileNotFoundException(user.id);
-    }
-    // Get agent profile
-    const agent = user.profile as TransactionCoordinatorAgentProfile;
-
-    if (agent.brokerage != null) {
-      this.logger.warn(
-        `Agent ${agent.id} is already associated with a brokerage`,
-      );
-      throw new AlreadyAssociatedWithBrokerageException(user.fullName);
-    }
-
-    // Find brokerage by access code
-    const brokerage = await this.brokerageService.findByAccessCode(accessCode);
-
-    if (!brokerage) {
-      throw new BrokerageNotFoundException(accessCode);
-    }
-
-    // Assign agent to brokerage
-    agent.brokerage = brokerage;
-    const updated =
-      await this.transactionCoordinatorAgentProfileRepository.save(agent);
-
-    this.logger.log(
-      `Agent ${agent.id} joined brokerage ${brokerage.name} using access code`,
-    );
-
-    return updated;
   }
 }
