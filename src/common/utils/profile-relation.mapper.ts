@@ -1,4 +1,4 @@
-import { ProfileType } from '../../users/entities/profile.entity';
+import { ProfileType } from '../enums/profile-type.enum';
 
 /**
  * Maps ProfileType enum values to their corresponding Brokerage relation names.

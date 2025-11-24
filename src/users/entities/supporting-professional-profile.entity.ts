@@ -1,5 +1,6 @@
 import { ChildEntity, Column, ManyToMany, JoinTable } from 'typeorm';
-import { Profile, ProfileType } from './profile.entity';
+import { Profile } from './profile.entity';
+import { ProfileType } from '../../common/enums/profile-type.enum';
 import { ProfessionalType } from '../../common/enums';
 import { Brokerage } from './brokerage.entity';
 

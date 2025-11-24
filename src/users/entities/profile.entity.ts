@@ -9,13 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from './user.entity';
-
-export enum ProfileType {
-  CLIENT = 'client',
-  REAL_ESTATE_AGENT = 'real_estate_agent',
-  SUPPORTING_PROFESSIONAL = 'supporting_professional',
-  BROKER = 'broker',
-}
+import { ProfileType } from '../../common/enums/profile-type.enum';
 
 @Entity('profiles')
 @TableInheritance({ column: { type: 'varchar', name: 'profile_type' } })
