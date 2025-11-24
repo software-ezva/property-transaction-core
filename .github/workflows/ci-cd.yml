@@ -1,0 +1,192 @@
+name: Backend CI/CD Pipeline
+
+on:
+  push:
+    branches: ['main', 'master']
+  pull_request:
+    branches: ['main', 'master']
+  workflow_dispatch:
+
+env:
+  # --- 1. PROJECT CONFIGURATION ---
+  PROJECT_ID: property-transaction
+  REGION: us-east1
+
+  # --- 2. ARTIFACT REGISTRY ---
+  REPO_NAME: cloud-run-source-deploy
+  SERVICE_NAME: property-transaction-core
+
+  # --- 3. RUNTIME IDENTITY (Cloud Run) ---
+  RUNTIME_SERVICE_ACCOUNT: property-coordinator-backend-runtime-sa@property-transaction.iam.gserviceaccount.com
+
+  # --- 4. PRIVATE NETWORK (VPC) ---
+  VPC_CONNECTOR: projects/property-transaction/locations/us-east1/connectors/conn-app-backend
+
+jobs:
+  # ========================================================================
+  # JOB 1: CI (Continuous Integration)
+  # ========================================================================
+  ci:
+    name: CI - Quality & Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: property_transaction_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # --- LINTER ---
+      - name: 🔍 Lint Code
+        run: npm run lint
+
+      # --- BUILD CHECK ---
+      - name: 🏗️ Build Application
+        run: npm run build
+
+      # --- PREPARE TEST ENV ---
+      - name: Create .env.test config
+        run: |
+          echo "DB_HOST=localhost" > .env.test
+          echo "DB_PORT=5432" >> .env.test
+          echo "DB_USERNAME=postgres" >> .env.test
+          echo "DB_PASSWORD=password" >> .env.test
+          echo "DB_DATABASE=property_transaction_test" >> .env.test
+          echo "NODE_ENV=test" >> .env.test
+          # Dummies for Joi
+          echo "AUTH0_ISSUER_URL=https://dummy.auth0.com" >> .env.test
+          echo "AUTH0_AUDIENCE=dummy" >> .env.test
+          echo "FIREBASE_STORAGE_BUCKET=dummy" >> .env.test
+          echo "FIREBASE_PROJECT_ID=dummy" >> .env.test
+
+      # --- TESTS ---
+      - name: 🥒 Run Cucumber Tests
+        run: npm run test:cucumber
+
+  # ========================================================================
+  # JOB 2: CD (Continuous Deployment)
+  # ========================================================================
+  cd:
+    name: CD - Deploy to Cloud Run
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. WIF Authentication
+      - name: Google Auth
+        id: auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          token_format: 'access_token'
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      # 2. Artifact Registry Login
+      - name: Artifact Registry Auth
+        uses: 'docker/login-action@v3'
+        with:
+          registry: ${{ env.REGION }}-docker.pkg.dev
+          username: 'oauth2accesstoken'
+          password: ${{ steps.auth.outputs.access_token }}
+
+      # 3. Setup Gcloud (Required for Cloud Run Jobs commands)
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      # 4. Build & Push
+      - name: Build and Push Container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:latest
+
+      # 5. Run Migrations (Cloud Run Job)
+      - name: Run Database Migrations
+        run: |
+          # Define Job name
+          JOB_NAME="${{ env.SERVICE_NAME }}-migrator"
+          IMAGE_URL="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+
+          echo "🚀 Deploying Migration Job: $JOB_NAME"
+
+          # Create or Update Job in Cloud Run
+          gcloud run jobs deploy $JOB_NAME \
+            --image $IMAGE_URL \
+            --region ${{ env.REGION }} \
+            --service-account ${{ env.RUNTIME_SERVICE_ACCOUNT }} \
+            --vpc-connector ${{ env.VPC_CONNECTOR }} \
+            --vpc-egress private-ranges-only \
+            --set-env-vars NODE_ENV=production \
+            --set-secrets DB_PASSWORD=DB_PASSWORD:latest,DB_USERNAME=DB_USERNAME:latest,DB_DATABASE=DB_DATABASE:latest,DB_SOCKET_PATH=DB_SOCKET_PATH:latest,AUTH0_ISSUER_URL=AUTH0_ISSUER_URL:latest,AUTH0_AUDIENCE=AUTH0_AUDIENCE:latest,FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest \
+            --command npm --args run,migration:run:prod \
+            --max-retries 0 \
+            --task-timeout 10m
+
+          echo "🔄 Executing Migration Job..."
+
+          # Execute Job and wait for completion
+          gcloud run jobs execute $JOB_NAME --region ${{ env.REGION }} --wait
+
+      # 6. Deploy to Cloud Run (Service)
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+
+          # Execution Identity (Runtime SA)
+          service_account: ${{ env.RUNTIME_SERVICE_ACCOUNT }}
+
+          # --- VPC CONNECTION ---
+          flags: '--vpc-connector=${{ env.VPC_CONNECTOR }} --vpc-egress=private-ranges-only'
+
+          # Public environment variables
+          env_vars: |
+            NODE_ENV=production
+            PORT=8080
+            ALLOWED_ORIGINS=https://www.homeconnectus.com,https://homeconnectus.com
+
+          # Secrets from Secret Manager
+          secrets: |
+            DB_PASSWORD=DB_PASSWORD:latest
+            DB_USERNAME=DB_USERNAME:latest
+            DB_DATABASE=DB_DATABASE:latest
+            DB_SOCKET_PATH=DB_SOCKET_PATH:latest
+            AUTH0_ISSUER_URL=AUTH0_ISSUER_URL:latest
+            AUTH0_AUDIENCE=AUTH0_AUDIENCE:latest
+            FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest
+            FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest
