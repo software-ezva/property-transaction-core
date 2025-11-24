@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 
 async function bootstrap() {
   process.env.TZ = process.env.TZ || 'America/New_York';
@@ -23,7 +24,14 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   const host = process.env.HOST || 'localhost';
 
-  app.enableCors();
+  app.enableCors({
+    origin: process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',')
+      : '*',
+    credentials: true,
+  });
+
+  app.use(helmet());
 
   // global prefix
   app.setGlobalPrefix('api/v1');
