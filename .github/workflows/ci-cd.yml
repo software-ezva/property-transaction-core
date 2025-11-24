@@ -13,11 +13,11 @@ env:
   REGION: us-east1
 
   # --- 2. ARTIFACT REGISTRY ---
-  REPO_NAME: cloud-run-source-deploy
-  SERVICE_NAME: property-transaction-core
+  REPO_NAME: property-transaction-coordinator
+  SERVICE_NAME: property-transaction-coordinator-core
 
   # --- 3. RUNTIME IDENTITY (Cloud Run) ---
-  RUNTIME_SERVICE_ACCOUNT: property-coordinator-backend-runtime-sa@property-transaction.iam.gserviceaccount.com
+  RUNTIME_SERVICE_ACCOUNT: prop-coord-be-runtime-sa@property-transaction.iam.gserviceaccount.com
 
   # --- 4. PRIVATE NETWORK (VPC) ---
   VPC_CONNECTOR: projects/property-transaction/locations/us-east1/connectors/conn-app-backend
@@ -27,7 +27,7 @@ jobs:
   # JOB 1: CI (Continuous Integration)
   # ========================================================================
   ci:
-    name: CI - Quality & Tests
+    name: Continuous Integration - Lint, Build & Test
     runs-on: ubuntu-latest
 
     services:
@@ -59,11 +59,11 @@ jobs:
         run: npm ci
 
       # --- LINTER ---
-      - name: 🔍 Lint Code
+      - name: Lint Code
         run: npm run lint
 
       # --- BUILD CHECK ---
-      - name: 🏗️ Build Application
+      - name: Build Check Application
         run: npm run build
 
       # --- PREPARE TEST ENV ---
@@ -82,7 +82,7 @@ jobs:
           echo "FIREBASE_PROJECT_ID=dummy" >> .env.test
 
       # --- TESTS ---
-      - name: 🥒 Run Cucumber Tests
+      - name: Run Cucumber Tests
         run: npm run test:cucumber
 
   # ========================================================================
@@ -140,7 +140,7 @@ jobs:
           JOB_NAME="${{ env.SERVICE_NAME }}-migrator"
           IMAGE_URL="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
 
-          echo "🚀 Deploying Migration Job: $JOB_NAME"
+          echo "Deploying Migration Job: $JOB_NAME"
 
           # Create or Update Job in Cloud Run
           gcloud run jobs deploy $JOB_NAME \
@@ -155,7 +155,7 @@ jobs:
             --max-retries 0 \
             --task-timeout 10m
 
-          echo "🔄 Executing Migration Job..."
+          echo "Executing Migration Job..."
 
           # Execute Job and wait for completion
           gcloud run jobs execute $JOB_NAME --region ${{ env.REGION }} --wait
