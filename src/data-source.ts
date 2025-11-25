@@ -12,6 +12,7 @@ const socketPath =
   process.env.DB_SOCKET_PATH ||
   (instanceConnectionName ? `/cloudsql/${instanceConnectionName}` : undefined);
 
+// Si socketPath existe, asumimos que estamos en un entorno de Cloud Run/producción
 const isProduction = !!socketPath;
 
 // --- LÓGICA DE RUTAS DINÁMICAS (CRUCIAL PARA MIGRACIONES) ---
@@ -23,10 +24,10 @@ const rootDir = isTsNode ? 'src' : 'dist';
 const fileExtension = isTsNode ? 'ts' : 'js';
 
 export const AppDataSource = new DataSource({
-  type: 'postgres',
+  type: 'postgres', // CORRECCIÓN CLAVE: Omitir host en producción para forzar socket
 
-  host: isProduction ? undefined : process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432'),
+  host: isProduction ? undefined : process.env.DB_HOST, // CORRECCIÓN CLAVE: Omitir port en producción para forzar socket
+  port: isProduction ? undefined : parseInt(process.env.DB_PORT || '5432'),
 
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
@@ -34,9 +35,9 @@ export const AppDataSource = new DataSource({
 
   schema: 'public',
   synchronize: false,
-  logging: !isProduction,
-
+  logging: !isProduction, // Desactivar el logging ruidoso en producción
   // Usamos path.join para construir la ruta absoluta correcta según el entorno
+
   entities: [
     path.join(__dirname, `../${rootDir}/**/*.entity.${fileExtension}`),
   ],
@@ -44,11 +45,12 @@ export const AppDataSource = new DataSource({
     path.join(__dirname, `../${rootDir}/migrations/*.${fileExtension}`),
   ],
 
-  subscribers: [],
+  subscribers: [], // No SSL en sockets de Cloud Run, solo SSL en TCP/IP remoto o local
 
   ssl: !isProduction && ssl ? { rejectUnauthorized: false } : false,
 
   extra: {
+    // Aquí se define el socketPath, pero solo funciona si host/port son undefined
     ...(socketPath ? { socketPath } : {}),
     max: 10,
     connectionTimeoutMillis: 10000,
