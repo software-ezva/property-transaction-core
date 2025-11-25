@@ -204,7 +204,6 @@ jobs:
           env_vars: |
             NODE_ENV=production
             INSTANCE_CONNECTION_NAME=${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }}
-            PORT=8080
             ALLOWED_ORIGINS=https://www.homeconnectus.com,https://homeconnectus.com,https://www.homeconnectllc.com,https://homeconnectllc.com
           secrets: |
             DB_PASSWORD=DB_PASSWORD:latest
