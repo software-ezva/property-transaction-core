@@ -35,9 +35,11 @@ const rootDir = isTsNode ? 'src' : 'dist';
 const fileExtension = isTsNode ? 'ts' : 'js';
 
 export const AppDataSource = new DataSource({
-  type: 'postgres', // CORRECCIÓN CLAVE: Omitir host en producción para forzar socket
+  type: 'postgres',
 
-  host: isProduction ? undefined : process.env.DB_HOST, // CORRECCIÓN CLAVE: Omitir port en producción para forzar socket
+  // CORRECCIÓN: En Postgres, para usar sockets, 'host' debe ser la ruta del directorio del socket.
+  // Si se deja undefined, pg conecta a localhost por defecto.
+  host: isProduction ? socketPath : process.env.DB_HOST,
   port: isProduction ? undefined : parseInt(process.env.DB_PORT || '5432'),
 
   username: process.env.DB_USERNAME,
