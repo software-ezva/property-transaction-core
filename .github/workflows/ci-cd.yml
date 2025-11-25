@@ -162,7 +162,7 @@ jobs:
             --set-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }} \
             --vpc-connector ${{ env.VPC_CONNECTOR }} \
             --vpc-egress private-ranges-only \
-            --set-env-vars NODE_ENV=production \
+            --set-env-vars NODE_ENV=production,INSTANCE_CONNECTION_NAME=${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }} \
             --set-secrets DB_PASSWORD=DB_PASSWORD:latest,DB_USERNAME=DB_USERNAME:latest,DB_DATABASE=DB_DATABASE:latest,DB_SOCKET_PATH=DB_SOCKET_PATH:latest,AUTH0_ISSUER_URL=AUTH0_ISSUER_URL:latest,AUTH0_AUDIENCE=AUTH0_AUDIENCE:latest,FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest \
             --command npm --args run,migration:run:prod \
             --max-retries 0 \
@@ -203,6 +203,7 @@ jobs:
           flags: '--service-account=${{ env.RUNTIME_SERVICE_ACCOUNT }} --set-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }} --vpc-connector=${{ env.VPC_CONNECTOR }} --vpc-egress=private-ranges-only'
           env_vars: |
             NODE_ENV=production
+            INSTANCE_CONNECTION_NAME=${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }}
             PORT=8080
             ALLOWED_ORIGINS=https://www.homeconnectus.com,https://homeconnectus.com,https://www.homeconnectllc.com,https://homeconnectllc.com
           secrets: |
