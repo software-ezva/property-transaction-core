@@ -89,7 +89,7 @@ jobs:
   # JOB 2: CD (Continuous Deployment)
   # ========================================================================
   cd:
-    name: CD - Deploy to Cloud Run
+    name: Continuous Deployment - Build, Push & Deploy
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -103,7 +103,7 @@ jobs:
         uses: actions/checkout@v4
 
       # 1. WIF Authentication
-      - name: Google Auth
+      - name: Google Authentication with Workload Identity Federation
         id: auth
         uses: 'google-github-actions/auth@v2'
         with:
@@ -112,7 +112,7 @@ jobs:
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
       # 2. Artifact Registry Login
-      - name: Artifact Registry Auth
+      - name: Artifact Registry Authentication
         uses: 'docker/login-action@v3'
         with:
           registry: ${{ env.REGION }}-docker.pkg.dev
@@ -124,7 +124,7 @@ jobs:
         uses: 'google-github-actions/setup-gcloud@v2'
 
       # 4. Build & Push
-      - name: Build and Push Container
+      - name: Build and Push Container Image to Artifact Registry
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -133,7 +133,7 @@ jobs:
             ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
       # 5. Run Migrations (Cloud Run Job)
-      - name: Run Database Migrations
+      - name: Run Database Migrations as Cloud Run Job
         run: |
           # Define Job name
           JOB_NAME="${{ env.SERVICE_NAME }}-migrator"
