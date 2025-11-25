@@ -19,7 +19,8 @@ env:
   # --- 3. RUNTIME IDENTITY (Cloud Run) ---
   RUNTIME_SERVICE_ACCOUNT: prop-coord-be-runtime-sa@property-transaction.iam.gserviceaccount.com
 
-  # --- 4. PRIVATE NETWORK (VPC) ---
+  # --- 4. CLOUD SQL & VPC ---
+  SQL_INSTANCE_NAME: db-propperty-coordinator-prod
   VPC_CONNECTOR: projects/property-transaction/locations/us-east1/connectors/conn-app-backend
 
 jobs:
@@ -158,6 +159,7 @@ jobs:
             --image $IMAGE_URL \
             --region ${{ env.REGION }} \
             --service-account ${{ env.RUNTIME_SERVICE_ACCOUNT }} \
+            --add-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }} \
             --vpc-connector ${{ env.VPC_CONNECTOR }} \
             --vpc-egress private-ranges-only \
             --set-env-vars NODE_ENV=production \
@@ -198,7 +200,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          flags: '--service-account=${{ env.RUNTIME_SERVICE_ACCOUNT }} --vpc-connector=${{ env.VPC_CONNECTOR }} --vpc-egress=private-ranges-only'
+          flags: '--service-account=${{ env.RUNTIME_SERVICE_ACCOUNT }} --add-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }} --vpc-connector=${{ env.VPC_CONNECTOR }} --vpc-egress=private-ranges-only'
           env_vars: |
             NODE_ENV=production
             PORT=8080
