@@ -26,8 +26,8 @@ jobs:
   # ========================================================================
   # JOB 1: CI (Continuous Integration)
   # ========================================================================
-  ci:
-    name: Continuous Integration - Lint, Build & Test
+  quality-checks:
+    name: Quality & Tests
     runs-on: ubuntu-latest
 
     services:
@@ -46,10 +46,10 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -58,16 +58,13 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # --- LINTER ---
-      - name: Lint Code
+      - name: Lint Check
         run: npm run lint
 
-      # --- BUILD CHECK ---
-      - name: Build Check Application
+      - name: Build Check
         run: npm run build
 
-      # --- PREPARE TEST ENV ---
-      - name: Create .env.test config
+      - name: Configure Test Env
         run: |
           echo "DB_HOST=localhost" > .env.test
           echo "DB_PORT=5432" >> .env.test
@@ -81,16 +78,15 @@ jobs:
           echo "FIREBASE_STORAGE_BUCKET=dummy" >> .env.test
           echo "FIREBASE_PROJECT_ID=dummy" >> .env.test
 
-      # --- TESTS ---
       - name: Run Cucumber Tests
         run: npm run test:cucumber
 
   # ========================================================================
-  # JOB 2: CD (Continuous Deployment)
+  # JOB 2: CD - Build & Push
   # ========================================================================
-  cd:
-    name: Continuous Deployment - Build, Push & Deploy
-    needs: ci
+  build-container:
+    name: Build & Push Image
+    needs: quality-checks
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
@@ -99,11 +95,10 @@ jobs:
       id-token: 'write'
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. WIF Authentication
-      - name: Google Authentication with Workload Identity Federation
+      - name: Authenticate Google Cloud
         id: auth
         uses: 'google-github-actions/auth@v2'
         with:
@@ -111,37 +106,55 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
-      # 2. Artifact Registry Login
-      - name: Artifact Registry Authentication
+      - name: Authenticate Docker
         uses: 'docker/login-action@v3'
         with:
           registry: ${{ env.REGION }}-docker.pkg.dev
           username: 'oauth2accesstoken'
           password: ${{ steps.auth.outputs.access_token }}
 
-      # 3. Setup Gcloud (Required for Cloud Run Jobs commands)
-      - name: Set up Cloud SDK
-        uses: 'google-github-actions/setup-gcloud@v2'
-
-      # 4. Build & Push
-      - name: Build and Push Container Image to Artifact Registry
+      - name: Build & Push Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: |
             ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:latest
 
-      # 5. Run Migrations (Cloud Run Job)
-      - name: Run Database Migrations as Cloud Run Job
+  # ========================================================================
+  # JOB 3: CD - Database Migrations
+  # ========================================================================
+  run-migrations:
+    name: DB Migrations
+    needs: build-container
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Execute DB Migrations
         run: |
-          # Define Job name
           JOB_NAME="${{ env.SERVICE_NAME }}-migrator"
           IMAGE_URL="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
 
           echo "Deploying Migration Job: $JOB_NAME"
 
-          # Create or Update Job in Cloud Run
           gcloud run jobs deploy $JOB_NAME \
             --image $IMAGE_URL \
             --region ${{ env.REGION }} \
@@ -155,31 +168,42 @@ jobs:
             --task-timeout 10m
 
           echo "Executing Migration Job..."
-
-          # Execute Job and wait for completion
           gcloud run jobs execute $JOB_NAME --region ${{ env.REGION }} --wait
 
-      # 6. Deploy to Cloud Run (Service)
+  # ========================================================================
+  # JOB 4: CD - Deploy Service
+  # ========================================================================
+  deploy-cloudrun:
+    name: Deploy Service
+    needs: run-migrations
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-
-          # Execution Identity (Runtime SA)
-          service_account: ${{ env.RUNTIME_SERVICE_ACCOUNT }}
-
-          # --- VPC CONNECTION ---
-          flags: '--vpc-connector=${{ env.VPC_CONNECTOR }} --vpc-egress=private-ranges-only'
-
-          # Public environment variables
+          flags: '--service-account=${{ env.RUNTIME_SERVICE_ACCOUNT }} --vpc-connector=${{ env.VPC_CONNECTOR }} --vpc-egress=private-ranges-only'
           env_vars: |
             NODE_ENV=production
             PORT=8080
-            ALLOWED_ORIGINS=https://www.homeconnectus.com,https://homeconnectus.com
-
-          # Secrets from Secret Manager
+            ALLOWED_ORIGINS=https://www.homeconnectus.com,https://homeconnectus.com,https://www.homeconnectllc.com,https://homeconnectllc.com
           secrets: |
             DB_PASSWORD=DB_PASSWORD:latest
             DB_USERNAME=DB_USERNAME:latest
