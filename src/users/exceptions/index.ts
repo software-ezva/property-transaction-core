@@ -6,6 +6,7 @@ export * from './brokerage-not-found.exception';
 export * from './brokerage-with-access-code-not-found.exception';
 export * from './invalid-access-code-format.exception';
 export * from './profile-not-found.exception';
+export * from './real-estate-agent-profile-not-found.exception';
 export * from './supporting-professional-not-found.exception';
 export * from './user-already-has-a-profile.exception';
 export * from './user-is-not-real-estate-agent.exception';

@@ -26,7 +26,7 @@ export interface TestWorld {
 }
 
 Given(
-  'a transaction {string} created by a real estate agent {string} for the property {string}',
+  'a transaction {string} created by a transaction coordinator agent {string} for the property {string}',
   async function (
     this: TestWorld,
     transactionType: string,
@@ -35,7 +35,7 @@ Given(
   ) {
     const {
       userService,
-      agentProfilesService,
+      transactionCoordinatorAgentProfilesService,
       propertyService,
       transactionService,
     } = getServices();
@@ -48,13 +48,17 @@ Given(
       agentName,
     );
 
-    // Create real estate agent profile
-    await agentProfilesService.assignAgentProfile(this.user.auth0Id, {
-      esign_name: agentName,
-      esign_initials: agentName.charAt(0).toUpperCase(),
-      phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
-      license_number: faker.string.alphanumeric(10),
-    });
+    // Create transaction coordinator agent profile
+    await transactionCoordinatorAgentProfilesService.assignTransactionCoordinatorAgentProfile(
+      this.user.auth0Id,
+      {
+        esign_name: agentName,
+        esign_initials: agentName.charAt(0).toUpperCase(),
+        phone_number:
+          '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
+        license_number: faker.string.alphanumeric(10),
+      },
+    );
 
     // Create property
     const property = await propertyService.create({
@@ -87,7 +91,7 @@ Given(
 );
 
 When(
-  'the real estate agent chooses a workflow template of {string} for the transaction',
+  'the transaction coordinator agent chooses a workflow template of {string} for the transaction',
   async function (this: TestWorld, transactionTemplate: string) {
     const { transactionService } = getServices();
     await setUpTemplateWorkflow.call(this, transactionTemplate);
@@ -145,7 +149,7 @@ Given(
 );
 
 When(
-  'the agent adds a checklist named {string}',
+  'the transaction coordinator agent adds a checklist named {string}',
   async function (newChecklist: string) {
     const { checklistService } = getServices();
     const { workflowRepository } = getRepositories();
@@ -240,7 +244,7 @@ Given(
 );
 
 When(
-  'the agent adds an item named {string} to the checklist {string}',
+  'the transaction coordinator agent adds an item named {string} to the checklist {string}',
   async function (newItem: string, checklistName: string) {
     const { itemService } = getServices();
     const { checklistRepository } = getRepositories();
@@ -310,7 +314,7 @@ Given(
 );
 
 When(
-  'real estate agents checks the step as {string}',
+  'transaction coordinator agent checks the step as {string}',
   async function (state: string) {
     const { itemService } = getServices();
 
@@ -341,7 +345,7 @@ async function setUpWorkflow(
 ) {
   const {
     userService,
-    agentProfilesService,
+    transactionCoordinatorAgentProfilesService,
     propertyService,
     transactionService,
   } = getServices();
@@ -356,12 +360,15 @@ async function setUpWorkflow(
   );
 
   // Create real estate agent profile
-  await agentProfilesService.assignAgentProfile(this.user.auth0Id, {
-    esign_name: faker.person.fullName(),
-    esign_initials: faker.person.firstName().charAt(0).toUpperCase(),
-    phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
-    license_number: faker.string.alphanumeric(10),
-  });
+  await transactionCoordinatorAgentProfilesService.assignTransactionCoordinatorAgentProfile(
+    this.user.auth0Id,
+    {
+      esign_name: faker.person.fullName(),
+      esign_initials: faker.person.firstName().charAt(0).toUpperCase(),
+      phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
+      license_number: faker.string.alphanumeric(10),
+    },
+  );
 
   // Create property
   const property = await propertyService.create({

@@ -20,7 +20,8 @@ export interface TestWorld extends SharedTestWorld {
 Given(
   `a real estate agent named {string}`,
   async function (this: TestWorld, agentName: string) {
-    const { userService, agentProfilesService } = getServices();
+    const { userService, transactionCoordinatorAgentProfilesService } =
+      getServices();
     // Create real estate agent
     this.agent = await userService.create(
       faker.string.uuid(),
@@ -30,12 +31,16 @@ Given(
     );
 
     // Create real estate agent profile
-    await agentProfilesService.assignAgentProfile(this.agent.auth0Id, {
-      esign_name: agentName,
-      esign_initials: agentName.charAt(0).toUpperCase(),
-      phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
-      license_number: faker.string.alphanumeric(10),
-    });
+    await transactionCoordinatorAgentProfilesService.assignTransactionCoordinatorAgentProfile(
+      this.agent.auth0Id,
+      {
+        esign_name: agentName,
+        esign_initials: agentName.charAt(0).toUpperCase(),
+        phone_number:
+          '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
+        license_number: faker.string.alphanumeric(10),
+      },
+    );
     expect(
       await userService.verifyUserIsRealEstateAgent(this.agent.auth0Id),
     ).toBe(true);

@@ -113,7 +113,7 @@ export class UsersService {
 
   async verifyUserIsRealEstateAgent(auth0Id: string): Promise<boolean> {
     const agent = await this.getUserByAuth0Id(auth0Id);
-    if (!agent.isRealEstateAgent()) {
+    if (!agent.isTransactionCoordinatoralAgent()) {
       this.logger.warn(`User with ID ${auth0Id} is not a real estate agent`);
       throw new UserIsNotRealEstateAgentException();
     }
