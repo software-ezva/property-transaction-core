@@ -1,0 +1,227 @@
+name: Backend CI/CD Pipeline
+
+on:
+  push:
+    branches: ['main', 'master']
+  pull_request:
+    branches: ['main', 'master']
+  workflow_dispatch:
+
+env:
+  # --- 1. PROJECT CONFIGURATION ---
+  PROJECT_ID: property-transaction
+  REGION: us-east1
+
+  # --- 2. ARTIFACT REGISTRY ---
+  REPO_NAME: property-transaction-coordinator
+  SERVICE_NAME: property-transaction-coordinator-core
+
+  # --- 3. RUNTIME IDENTITY (Cloud Run) ---
+  RUNTIME_SERVICE_ACCOUNT: prop-coord-be-runtime-sa@property-transaction.iam.gserviceaccount.com
+
+  # --- 4. CLOUD SQL & VPC ---
+  SQL_INSTANCE_NAME: db-propperty-coordinator-prod
+  VPC_CONNECTOR: projects/property-transaction/locations/us-east1/connectors/conn-app-backend
+
+jobs:
+  # ========================================================================
+  # JOB 1: CI (Continuous Integration)
+  # ========================================================================
+  quality-checks:
+    name: Quality & Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: property_transaction_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint Check
+        run: npm run lint
+
+      - name: Build Check
+        run: npm run build
+
+      - name: Configure Test Env
+        run: |
+          echo "DB_HOST=localhost" > .env.test
+          echo "DB_PORT=5432" >> .env.test
+          echo "DB_USERNAME=postgres" >> .env.test
+          echo "DB_PASSWORD=password" >> .env.test
+          echo "DB_DATABASE=property_transaction_test" >> .env.test
+          echo "NODE_ENV=test" >> .env.test
+          # Dummies for Joi
+          echo "AUTH0_ISSUER_URL=https://dummy.auth0.com" >> .env.test
+          echo "AUTH0_AUDIENCE=dummy" >> .env.test
+          echo "FIREBASE_STORAGE_BUCKET=dummy" >> .env.test
+          echo "FIREBASE_PROJECT_ID=dummy" >> .env.test
+
+      - name: Run Cucumber Tests
+        run: npm run test:cucumber
+
+  # ========================================================================
+  # JOB 2: CD - Build & Push
+  # ========================================================================
+  build-container:
+    name: Build & Push Image
+    needs: quality-checks
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate Google Cloud
+        id: auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          token_format: 'access_token'
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Authenticate Docker
+        uses: 'docker/login-action@v3'
+        with:
+          registry: ${{ env.REGION }}-docker.pkg.dev
+          username: 'oauth2accesstoken'
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Build & Push Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+
+  # ========================================================================
+  # JOB 3: CD - Database Migrations
+  # ========================================================================
+  run-migrations:
+    name: DB Migrations
+    needs: build-container
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Check for Migration Changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            migrations:
+              - 'src/migrations/**'
+
+      - name: Authenticate Google Cloud
+        if: steps.filter.outputs.migrations == 'true'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud SDK
+        if: steps.filter.outputs.migrations == 'true'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Execute DB Migrations
+        if: steps.filter.outputs.migrations == 'true'
+        run: |
+          JOB_NAME="${{ env.SERVICE_NAME }}-migrator"
+          IMAGE_URL="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+
+          echo "Deploying Migration Job: $JOB_NAME"
+
+          gcloud run jobs deploy $JOB_NAME \
+            --image $IMAGE_URL \
+            --region ${{ env.REGION }} \
+            --service-account ${{ env.RUNTIME_SERVICE_ACCOUNT }} \
+            --set-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }} \
+            --vpc-connector ${{ env.VPC_CONNECTOR }} \
+            --vpc-egress private-ranges-only \
+            --set-env-vars NODE_ENV=production,INSTANCE_CONNECTION_NAME=${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }} \
+            --set-secrets DB_PASSWORD=DB_PASSWORD:latest,DB_USERNAME=DB_USERNAME:latest,DB_DATABASE=DB_DATABASE:latest,DB_SOCKET_PATH=DB_SOCKET_PATH:latest,AUTH0_ISSUER_URL=AUTH0_ISSUER_URL:latest,AUTH0_AUDIENCE=AUTH0_AUDIENCE:latest,FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest \
+            --command npm --args run,migration:run:prod \
+            --max-retries 0 \
+            --task-timeout 10m
+
+          echo "Executing Migration Job..."
+          gcloud run jobs execute $JOB_NAME --region ${{ env.REGION }} --wait
+
+  # ========================================================================
+  # JOB 4: CD - Deploy Service
+  # ========================================================================
+  deploy-cloudrun:
+    name: Deploy Service
+    needs: run-migrations
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          flags: '--service-account=${{ env.RUNTIME_SERVICE_ACCOUNT }} --set-cloudsql-instances=${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }} --vpc-connector=${{ env.VPC_CONNECTOR }} --vpc-egress=private-ranges-only'
+          env_vars: |
+            NODE_ENV=production
+            INSTANCE_CONNECTION_NAME=${{ env.PROJECT_ID }}:${{ env.REGION }}:${{ env.SQL_INSTANCE_NAME }}
+            ALLOWED_ORIGINS=https://www.homeconnectus.com,https://homeconnectus.com,https://www.homeconnectllc.com,https://homeconnectllc.com
+          secrets: |
+            DB_PASSWORD=DB_PASSWORD:latest
+            DB_USERNAME=DB_USERNAME:latest
+            DB_DATABASE=DB_DATABASE:latest
+            DB_SOCKET_PATH=DB_SOCKET_PATH:latest
+            AUTH0_ISSUER_URL=AUTH0_ISSUER_URL:latest
+            AUTH0_AUDIENCE=AUTH0_AUDIENCE:latest
+            FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest
+            FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest

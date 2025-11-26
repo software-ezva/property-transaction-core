@@ -2,7 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
-import { Profile, ProfileType } from '../entities/profile.entity';
+import { Profile } from '../entities/profile.entity';
+import { ProfileType } from '../../common/enums/profile-type.enum';
 import { SupportingProfessionalProfile } from '../entities/supporting-professional-profile.entity';
 import { CreateSupportingProfessionalProfileDto } from '../dto/create-supporting-professional-profile.dto';
 import {

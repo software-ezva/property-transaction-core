@@ -45,6 +45,7 @@ BeforeAll(async function () {
     dataSource = new DataSource({
       ...baseConfig,
       database: testDatabase,
+      dropSchema: true,
     });
 
     await dataSource.initialize();

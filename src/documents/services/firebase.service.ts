@@ -13,46 +13,53 @@ export class FirebaseService {
 
   private initializeFirebase() {
     try {
-      const requiredVars = [
-        'FIREBASE_PROJECT_ID',
-        'FIREBASE_CLIENT_EMAIL',
-        'FIREBASE_PRIVATE_KEY',
-        'FIREBASE_STORAGE_BUCKET',
-      ];
-
-      const missingVars = requiredVars.filter(
-        (varName) => !process.env[varName],
-      );
-
-      if (missingVars.length > 0) {
-        this.logger.warn(
-          `Firebase configuration incomplete. Missing variables: ${missingVars.join(', ')}`,
-        );
-        return;
-      }
-
       if (!admin.apps.length) {
-        let privateKey = process.env.FIREBASE_PRIVATE_KEY!;
+        const projectId = process.env.FIREBASE_PROJECT_ID;
+        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+        const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+        const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
 
-        privateKey = privateKey.replace(/\\n/g, '\n');
-
-        if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-          privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----\n`;
+        if (!storageBucket) {
+          this.logger.warn(
+            'Firebase configuration incomplete. Missing FIREBASE_STORAGE_BUCKET',
+          );
+          return;
         }
 
-        admin.initializeApp({
-          credential: admin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID!,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-            privateKey: privateKey,
-          }),
-          storageBucket: process.env.FIREBASE_STORAGE_BUCKET!,
-        });
+        // Si tenemos credenciales explícitas (JSON/Env vars), las usamos (Modo Local/Legacy)
+        if (clientEmail && privateKey && projectId) {
+          let formattedKey = privateKey.replace(/\\n/g, '\n');
+          if (!formattedKey.includes('-----BEGIN PRIVATE KEY-----')) {
+            formattedKey = `-----BEGIN PRIVATE KEY-----\n${formattedKey}\n-----END PRIVATE KEY-----\n`;
+          }
+
+          admin.initializeApp({
+            credential: admin.credential.cert({
+              projectId,
+              clientEmail,
+              privateKey: formattedKey,
+            }),
+            storageBucket,
+          });
+          this.logger.log(
+            'Firebase initialized with explicit credentials (JSON/Env)',
+          );
+        } else {
+          // Si no, usamos Application Default Credentials (ADC) (Modo Cloud/GCP)
+          // Esto requiere que el entorno tenga acceso (ej. Cloud Run Service Account)
+          admin.initializeApp({
+            credential: admin.credential.applicationDefault(),
+            storageBucket,
+            projectId, // Opcional, pero recomendado si está disponible
+          });
+          this.logger.log(
+            'Firebase initialized with Application Default Credentials (ADC)',
+          );
+        }
       }
 
       this.bucket = admin.storage();
       this.isConfigured = true;
-      this.logger.log('Firebase initialized successfully');
     } catch (error) {
       this.logger.error('Failed to initialize Firebase', error);
       this.isConfigured = false;

@@ -8,7 +8,8 @@ import {
   Index,
 } from 'typeorm';
 import { Transaction } from '../../transactions/entities/transaction.entity';
-import { Profile, ProfileType } from './profile.entity';
+import { Profile } from './profile.entity';
+import { ProfileType } from '../../common/enums/profile-type.enum';
 import { getBrokerageRelationForProfileType } from '../../common/utils/profile-relation.mapper';
 
 @Entity('users')
