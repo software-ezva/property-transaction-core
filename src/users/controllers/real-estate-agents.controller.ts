@@ -82,15 +82,18 @@ export class RealEstateAgentsController extends BaseProfileController {
         );
       return { profile };
     } catch (error) {
-      this.handleError(error, 'assign real estate agent profile', req.user?.sub);
+      this.handleError(
+        error,
+        'assign real estate agent profile',
+        req.user?.sub,
+      );
     }
   }
 
   @Get(':id')
   @ApiOperation({
     summary: 'Get real estate agent by ID',
-    description:
-      'Retrieves a specific real estate agent by their profile ID.',
+    description: 'Retrieves a specific real estate agent by their profile ID.',
   })
   @ApiParam({
     name: 'id',
