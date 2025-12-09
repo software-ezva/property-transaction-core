@@ -10,13 +10,10 @@ import { CreateRealEstateAgentProfileDto } from '../dto/create-real-estate-agent
 import {
   UserAlreadyHasAProfileException,
   RealEstateAgentProfileNotFoundException,
-  InvalidAccessCodeFormatException,
   AlreadyAssociatedWithBrokerageException,
-  BrokerageNotFoundException,
 } from '../exceptions';
 import { UsersService } from './users.service';
 import { BrokerageService } from './brokerage.service';
-import { AccessCodeGenerator } from '../utils/access-code.generator';
 
 @Injectable()
 export class RealEstateAgentProfilesService {
@@ -123,11 +120,6 @@ export class RealEstateAgentProfilesService {
     auth0Id: string,
     accessCode: string,
   ): Promise<RealEstateAgentProfile> {
-    // Validate access code format
-    if (!AccessCodeGenerator.isValid(accessCode)) {
-      throw new InvalidAccessCodeFormatException(accessCode);
-    }
-
     const user = await this.userService.getUserByAuth0Id(auth0Id);
     if (!user.isRealEstateAgent()) {
       this.logger.warn(`User with ID ${auth0Id} is not a real estate agent`);
@@ -143,12 +135,9 @@ export class RealEstateAgentProfilesService {
       throw new AlreadyAssociatedWithBrokerageException(user.fullName);
     }
 
-    // Find brokerage by access code
-    const brokerage = await this.brokerageService.findByAccessCode(accessCode);
-
-    if (!brokerage) {
-      throw new BrokerageNotFoundException(accessCode);
-    }
+    // Validate and get brokerage
+    const brokerage =
+      await this.brokerageService.validateAndGetBrokerageForJoin(accessCode);
 
     // Assign agent to brokerage
     agent.brokerage = brokerage;

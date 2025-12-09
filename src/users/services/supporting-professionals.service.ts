@@ -9,13 +9,11 @@ import { CreateSupportingProfessionalProfileDto } from '../dto/create-supporting
 import {
   UserAlreadyHasAProfileException,
   SupportingProfessionalNotFoundException,
-  InvalidAccessCodeFormatException,
   AlreadyAssociatedWithBrokerageException,
 } from '../exceptions';
 import { UsersService } from './users.service';
 import { BrokerageService } from './brokerage.service';
 import { ProfessionalType } from '../../common/enums';
-import { AccessCodeGenerator } from '../utils/access-code.generator';
 
 @Injectable()
 export class SupportingProfessionalsService {
@@ -116,11 +114,6 @@ export class SupportingProfessionalsService {
     auth0Id: string,
     accessCode: string,
   ): Promise<SupportingProfessionalProfile> {
-    // Validate access code format
-    if (!AccessCodeGenerator.isValid(accessCode)) {
-      throw new InvalidAccessCodeFormatException(accessCode);
-    }
-
     const user = await this.userService.getUserByAuth0Id(auth0Id);
     if (!user.isSupportingProfessional()) {
       this.logger.warn(
@@ -142,8 +135,9 @@ export class SupportingProfessionalsService {
       throw new SupportingProfessionalNotFoundException(professional.id);
     }
 
-    // Find brokerage by access code
-    const brokerage = await this.brokerageService.findByAccessCode(accessCode);
+    // Validate and get brokerage
+    const brokerage =
+      await this.brokerageService.validateAndGetBrokerageForJoin(accessCode);
 
     // Check if already associated
     const alreadyAssociated = professionalWithBrokerages.brokerages.some(
