@@ -1,6 +1,7 @@
-import { ChildEntity, Column } from 'typeorm';
+import { ChildEntity, Column, OneToMany } from 'typeorm';
 import { Profile } from './profile.entity';
 import { ProfileType } from '../../common/enums/profile-type.enum';
+import { Transaction } from '../../transactions/entities/transaction.entity';
 
 @ChildEntity(ProfileType.TRANSACTION_COORDINATOR_AGENT)
 export class TransactionCoordinatorAgentProfile extends Profile {
@@ -19,4 +20,10 @@ export class TransactionCoordinatorAgentProfile extends Profile {
     comment: 'MLS number',
   })
   mlsNumber: string;
+
+  @OneToMany(
+    () => Transaction,
+    (transaction) => transaction.transactionCoordinatorAgent,
+  )
+  transactions: Transaction[];
 }

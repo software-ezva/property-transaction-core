@@ -143,11 +143,14 @@ export function getServices() {
 
   const checklistService = new ChecklistService(
     repositories.checklistRepository,
+    transactionAuthorizationService,
+    repositories.workflowRepository,
   );
 
   const itemService = new ItemService(
     repositories.itemRepository,
     transactionAuthorizationService,
+    checklistService,
   );
 
   // Create a complete mock StorageService that implements all methods

@@ -3,11 +3,8 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToOne,
-  OneToMany,
-  ManyToMany,
   Index,
 } from 'typeorm';
-import { Transaction } from '../../transactions/entities/transaction.entity';
 import { Profile } from './profile.entity';
 import { ProfileType } from '../../common/enums/profile-type.enum';
 import { getBrokerageRelationForProfileType } from '../../common/utils/profile-relation.mapper';
@@ -61,18 +58,6 @@ export class User {
   })
   profile: Profile;
 
-  @OneToMany(() => Transaction, (transaction) => transaction.agent)
-  agentTransactions: Transaction[];
-
-  @OneToMany(() => Transaction, (transaction) => transaction.client)
-  clientTransactions: Transaction[];
-
-  @ManyToMany(
-    () => Transaction,
-    (transaction) => transaction.supportingProfessionals,
-  )
-  supportingProfessionalTransactions: Transaction[];
-
   get fullName(): string {
     return `${this.firstName || ''} ${this.lastName || ''}`.trim();
   }
@@ -81,7 +66,7 @@ export class User {
     return this.profile?.profileType || null;
   }
 
-  isTransactionCoordinatoralAgent(): boolean {
+  isTransactionCoordinatorAgent(): boolean {
     return (
       this.profile?.profileType === ProfileType.TRANSACTION_COORDINATOR_AGENT
     );

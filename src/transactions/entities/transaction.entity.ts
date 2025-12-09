@@ -12,7 +12,10 @@ import {
   JoinTable,
 } from 'typeorm';
 import { Property } from '../../properties/entities/property.entity';
-import { User } from '../../users/entities/user.entity';
+import { TransactionCoordinatorAgentProfile } from '../../users/entities/transaction-coordinator-agent-profile.entity';
+import { RealEstateAgentProfile } from '../../users/entities/real-estate-agent-profile.entity';
+import { ClientProfile } from '../../users/entities/client-profile.entity';
+import { SupportingProfessionalProfile } from '../../users/entities/supporting-professional-profile.entity';
 import { Workflow } from './workflow.entity';
 import { TransactionType, TransactionStatus } from '../../common/enums';
 import { Document } from '../../documents/entities/document.entity';
@@ -37,6 +40,9 @@ export class Transaction {
   @Column({ type: 'varchar', length: 500, nullable: true })
   additionalNotes?: string;
 
+  @Column({ type: 'varchar', length: 6, unique: true, nullable: true })
+  accessCode: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -49,17 +55,27 @@ export class Transaction {
   @JoinColumn({ name: 'propertyId' })
   property: Property;
 
-  @ManyToOne(() => User, (user) => user.agentTransactions, {
-    nullable: false,
-  })
-  @JoinColumn({ name: 'agentId' })
-  agent: User;
+  @ManyToOne(
+    () => TransactionCoordinatorAgentProfile,
+    (profile) => profile.transactions,
+    {
+      nullable: false,
+    },
+  )
+  @JoinColumn({ name: 'transactionCoordinatorAgentId' })
+  transactionCoordinatorAgent: TransactionCoordinatorAgentProfile;
 
-  @ManyToOne(() => User, (user) => user.clientTransactions, {
+  @ManyToOne(() => RealEstateAgentProfile, (profile) => profile.transactions, {
+    nullable: true,
+  })
+  @JoinColumn({ name: 'realEstateAgentId' })
+  realEstateAgent?: RealEstateAgentProfile;
+
+  @ManyToOne(() => ClientProfile, (profile) => profile.transactions, {
     nullable: true,
   })
   @JoinColumn({ name: 'clientId' })
-  client?: User;
+  client?: ClientProfile;
 
   @OneToOne(() => Workflow, (workflow) => workflow.transaction, {
     cascade: ['insert', 'update', 'remove'],
@@ -71,7 +87,10 @@ export class Transaction {
   @OneToMany(() => Document, (document) => document.transaction)
   documents: Document[];
 
-  @ManyToMany(() => User, (user) => user.supportingProfessionalTransactions)
+  @ManyToMany(
+    () => SupportingProfessionalProfile,
+    (profile) => profile.transactions,
+  )
   @JoinTable()
-  supportingProfessionals: User[];
+  supportingProfessionals: SupportingProfessionalProfile[];
 }

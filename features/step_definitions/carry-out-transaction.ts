@@ -12,6 +12,7 @@ import { Checklist } from '../../src/transactions/entities/checklist.entity';
 import { Item } from '../../src/transactions/entities/item.entity';
 import { TransactionType } from '../../src/common/enums/transaction-type.enum';
 import { WorkflowTemplate } from 'src/templates/entities/workflow-template.entity';
+import { TransactionCoordinatorAgentProfile } from 'src/users/entities/transaction-coordinator-agent-profile.entity';
 
 export interface TestWorld {
   user?: User;
@@ -49,16 +50,19 @@ Given(
     );
 
     // Create transaction coordinator agent profile
-    await transactionCoordinatorAgentProfilesService.assignTransactionCoordinatorAgentProfile(
-      this.user.auth0Id,
-      {
-        esign_name: agentName,
-        esign_initials: agentName.charAt(0).toUpperCase(),
-        phone_number:
-          '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
-        license_number: faker.string.alphanumeric(10),
-      },
-    );
+    const profile =
+      await transactionCoordinatorAgentProfilesService.assignTransactionCoordinatorAgentProfile(
+        this.user.auth0Id,
+        {
+          esign_name: agentName,
+          esign_initials: agentName.charAt(0).toUpperCase(),
+          phone_number:
+            '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
+          license_number: faker.string.alphanumeric(10),
+        },
+      );
+
+    this.user.profile = profile;
 
     // Create property
     const property = await propertyService.create({
@@ -74,7 +78,7 @@ Given(
     this.transaction = await transactionService.createAndSaveTransaction(
       mapToTransactionType(transactionType),
       this.property,
-      this.user,
+      this.user.profile as TransactionCoordinatorAgentProfile,
       null,
       'Initial transaction setup',
     );
@@ -82,7 +86,7 @@ Given(
     // Verify transaction exists
     const hasTransaction = await transactionService.existsATransaction(
       this.property,
-      this.user,
+      this.user.profile as TransactionCoordinatorAgentProfile,
       null,
       this.transaction.transactionType,
     );
@@ -154,11 +158,11 @@ When(
     const { checklistService } = getServices();
     const { workflowRepository } = getRepositories();
 
-    const result = await checklistService.addChecklistToWorkflow(
+    const checklist = await checklistService.addChecklistToWorkflow(
       newChecklist,
       this.workflow as Workflow,
     );
-    expect(result).toBe(true);
+    expect(checklist).toBeDefined();
 
     // Reload workflow with updated checklists
     const updatedWorkflow = await workflowRepository.findOne({
@@ -360,15 +364,18 @@ async function setUpWorkflow(
   );
 
   // Create real estate agent profile
-  await transactionCoordinatorAgentProfilesService.assignTransactionCoordinatorAgentProfile(
-    this.user.auth0Id,
-    {
-      esign_name: faker.person.fullName(),
-      esign_initials: faker.person.firstName().charAt(0).toUpperCase(),
-      phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
-      license_number: faker.string.alphanumeric(10),
-    },
-  );
+  const profile =
+    await transactionCoordinatorAgentProfilesService.assignTransactionCoordinatorAgentProfile(
+      this.user.auth0Id,
+      {
+        esign_name: faker.person.fullName(),
+        esign_initials: faker.person.firstName().charAt(0).toUpperCase(),
+        phone_number:
+          '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
+        license_number: faker.string.alphanumeric(10),
+      },
+    );
+  this.user.profile = profile;
 
   // Create property
   const property = await propertyService.create({
@@ -384,7 +391,7 @@ async function setUpWorkflow(
   this.transaction = await transactionService.createAndSaveTransaction(
     typeOfTransaction,
     this.property,
-    this.user,
+    this.user.profile as TransactionCoordinatorAgentProfile,
     null,
     'Initial transaction setup',
   );

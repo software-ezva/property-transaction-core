@@ -1,7 +1,8 @@
-import { ChildEntity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { ChildEntity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Profile } from './profile.entity';
 import { ProfileType } from '../../common/enums/profile-type.enum';
 import { Brokerage } from './brokerage.entity';
+import { Transaction } from '../../transactions/entities/transaction.entity';
 
 @ChildEntity(ProfileType.REAL_ESTATE_AGENT)
 export class RealEstateAgentProfile extends Profile {
@@ -27,4 +28,7 @@ export class RealEstateAgentProfile extends Profile {
   })
   @JoinColumn({ name: 'brokerageId' })
   brokerage?: Brokerage;
+
+  @OneToMany(() => Transaction, (transaction) => transaction.realEstateAgent)
+  transactions: Transaction[];
 }
