@@ -16,10 +16,6 @@ export class CreateTransactionDto {
     description: 'The ID of the client user (optional)',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
-  @IsOptional()
-  @IsUUID(4, { message: 'Client ID must be a valid UUID' })
-  clientId?: string;
-
   @ApiPropertyOptional({
     description: 'Additional notes or comments about the transaction',
     example: 'Client prefers morning appointments',
