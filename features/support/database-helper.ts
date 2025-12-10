@@ -38,6 +38,7 @@ import { SignatureService } from '../../src/documents/services/signature.service
 import { BrokerageService } from '../../src/users/services/brokerage.service';
 import { BrokerProfilesService } from '../../src/users/services/broker-profiles.service';
 import { BrokerProfile } from '../../src/users/entities/broker-profile.entity';
+import { WorkflowService } from 'src/transactions/services/workflow.service';
 
 // Lazy initialization functions
 export function getRepositories() {
@@ -141,10 +142,15 @@ export function getServices() {
     dataSource,
   );
 
+  const workflowService = new WorkflowService(
+    repositories.workflowRepository,
+    transactionAuthorizationService,
+  );
+
   const checklistService = new ChecklistService(
     repositories.checklistRepository,
     transactionAuthorizationService,
-    repositories.workflowRepository,
+    workflowService,
   );
 
   const itemService = new ItemService(

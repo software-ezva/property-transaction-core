@@ -174,4 +174,20 @@ export class ItemService {
 
     return items;
   }
+
+  async getItemById(itemId: string): Promise<Item> {
+    const item = await this.itemRepository.findOne({
+      where: { id: itemId },
+      relations: [
+        'checklist',
+        'checklist.workflow',
+        'checklist.workflow.transaction',
+      ],
+    });
+
+    if (!item) {
+      throw new ItemNotFoundException(itemId);
+    }
+    return item;
+  }
 }
