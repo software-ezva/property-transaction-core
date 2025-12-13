@@ -220,6 +220,7 @@ export class TemplatesService {
     const newChecklist = manager.create(Checklist, {
       workflow: workflow,
       name: template.name,
+      order: template.order,
     });
 
     const savedChecklist = await manager.save(newChecklist);
@@ -229,6 +230,7 @@ export class TemplatesService {
       const newItem = manager.create(Item, {
         checklist: savedChecklist,
         description: itemTemplate.description,
+        order: itemTemplate.order,
       });
       await manager.save(newItem);
     }

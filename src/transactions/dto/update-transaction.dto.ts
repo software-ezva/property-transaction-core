@@ -1,11 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsOptional,
-  IsEnum,
-  IsUUID,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsOptional, IsEnum, IsString, MaxLength } from 'class-validator';
 import { TransactionStatus } from '../../common/enums';
 
 export class UpdateTransactionDto {
@@ -26,10 +20,6 @@ export class UpdateTransactionDto {
     format: 'uuid',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  @IsOptional()
-  @IsUUID(4, { message: 'Client ID must be a valid UUID' })
-  clientId?: string;
-
   @ApiPropertyOptional({
     description: 'Additional notes for the transaction',
     maxLength: 500,

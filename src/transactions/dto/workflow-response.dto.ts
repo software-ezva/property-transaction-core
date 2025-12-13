@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ItemStatus } from '../../common/enums';
+import { ItemUpdateResponseDto } from './item-update-response.dto';
 
 export class WorkflowItemDto {
   @ApiProperty({
@@ -34,6 +35,12 @@ export class WorkflowItemDto {
     nullable: true,
   })
   expectClosingDate?: Date | null;
+
+  @ApiProperty({
+    description: 'List of updates/comments for this item',
+    type: [ItemUpdateResponseDto],
+  })
+  updates?: ItemUpdateResponseDto[];
 }
 
 export class WorkflowChecklistDto {

@@ -6,9 +6,11 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
 import { Checklist } from './checklist.entity';
 import { ItemStatus } from '../../common/enums';
+import { ItemUpdate } from './item-update.entity';
 
 @Entity('items')
 export class Item {
@@ -36,7 +38,6 @@ export class Item {
 
   @Column({
     type: 'date',
-    default: () => 'CURRENT_DATE',
     nullable: true,
   })
   expectClosingDate?: Date | null;
@@ -45,6 +46,9 @@ export class Item {
   @ManyToOne(() => Checklist, (checklist) => checklist.items)
   @JoinColumn({ name: 'checklistId' })
   checklist: Checklist;
+
+  @OneToMany(() => ItemUpdate, (update) => update.item)
+  updates: ItemUpdate[];
 
   // Métodos de utilidad
   getStatusDisplay(): string {

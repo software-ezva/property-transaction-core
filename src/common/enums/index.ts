@@ -4,3 +4,4 @@ export * from './item-status.enum';
 export * from './document-template-categories.enum';
 export * from './document-status.enum';
 export * from './professional-type.enum';
+export * from './profile-type.enum';

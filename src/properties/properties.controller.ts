@@ -104,59 +104,59 @@ export class PropertiesController {
     }
   }
 
-  // @Get(':id')
-  // @ApiOperation({
-  //   summary: 'Get property by ID',
-  //   description: 'Retrieves a specific property by its ID.',
-  // })
-  // @ApiParam({
-  //   name: 'id',
-  //   description: 'Property ID',
-  //   type: 'number',
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Property retrieved successfully',
-  //   type: PropertyResponseDto,
-  // })
-  // @ApiNotFoundResponse({
-  //   description: 'Property not found',
-  // })
-  // @ApiBadRequestResponse({
-  //   description: 'Invalid property ID provided',
-  // })
-  // @ApiInternalServerErrorResponse({
-  //   description: 'Internal server error during property retrieval',
-  // })
-  // async findOne(@Param('id') id: string): Promise<PropertyResponseDto> {
-  //   try {
-  //     if (!id || !id.trim()) {
-  //       throw new HttpException('Invalid property ID', HttpStatus.BAD_REQUEST);
-  //     }
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get property by ID',
+    description: 'Retrieves a specific property by its ID.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Property ID',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Property retrieved successfully',
+    type: PropertyResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Property not found',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid property ID provided',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error during property retrieval',
+  })
+  async findOne(@Param('id') id: string): Promise<PropertyResponseDto> {
+    try {
+      if (!id || !id.trim()) {
+        throw new HttpException('Invalid property ID', HttpStatus.BAD_REQUEST);
+      }
 
-  //     const result = await this.propertiesService.findOne(id);
-  //     return { result };
-  //   } catch (error) {
-  //     this.logger.error(
-  //       `Failed to retrieve property with ID: ${id}`,
-  //       error instanceof Error ? error.stack : String(error),
-  //     );
+      const result = await this.propertiesService.findOne(id);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Failed to retrieve property with ID: ${id}`,
+        error instanceof Error ? error.stack : String(error),
+      );
 
-  //     // Handle domain exceptions
-  //     if (error instanceof PropertyNotFoundException) {
-  //       throw new HttpException(error.message, HttpStatus.NOT_FOUND);
-  //     }
+      // Handle domain exceptions
+      if (error instanceof PropertyNotFoundException) {
+        throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      }
 
-  //     if (error instanceof HttpException) {
-  //       throw error;
-  //     }
+      if (error instanceof HttpException) {
+        throw error;
+      }
 
-  //     throw new HttpException(
-  //       'Internal server error during property retrieval',
-  //       HttpStatus.INTERNAL_SERVER_ERROR,
-  //     );
-  //   }
-  // }
+      throw new HttpException(
+        'Internal server error during property retrieval',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   @Patch(':id')
   @ApiOperation({
@@ -166,7 +166,7 @@ export class PropertiesController {
   @ApiParam({
     name: 'id',
     description: 'Property ID',
-    type: 'number',
+    type: 'string',
   })
   @ApiBody({
     type: UpdatePropertyDto,
@@ -227,7 +227,7 @@ export class PropertiesController {
   @ApiParam({
     name: 'id',
     description: 'Property ID',
-    type: 'number',
+    type: 'string',
   })
   @ApiResponse({
     status: 200,

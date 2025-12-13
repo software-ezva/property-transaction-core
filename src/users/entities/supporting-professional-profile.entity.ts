@@ -3,6 +3,7 @@ import { Profile } from './profile.entity';
 import { ProfileType } from '../../common/enums/profile-type.enum';
 import { ProfessionalType } from '../../common/enums';
 import { Brokerage } from './brokerage.entity';
+import { Transaction } from '../../transactions/entities/transaction.entity';
 
 @ChildEntity(ProfileType.SUPPORTING_PROFESSIONAL)
 export class SupportingProfessionalProfile extends Profile {
@@ -33,4 +34,10 @@ export class SupportingProfessionalProfile extends Profile {
     },
   })
   brokerages: Brokerage[];
+
+  @ManyToMany(
+    () => Transaction,
+    (transaction) => transaction.supportingProfessionals,
+  )
+  transactions: Transaction[];
 }

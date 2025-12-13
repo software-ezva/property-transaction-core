@@ -5,7 +5,7 @@ import { Auth0User } from '../interfaces/auth0-user.interface';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserNotFoundException } from '../exceptions/user-not-found.exception';
-import { UserIsNotRealEstateAgentException } from '../exceptions';
+import { UserIsNotTransactionCoordinatorAgentException } from '../exceptions';
 
 @Injectable()
 export class UsersService {
@@ -111,11 +111,13 @@ export class UsersService {
     return user;
   }
 
-  async verifyUserIsRealEstateAgent(auth0Id: string): Promise<boolean> {
+  async verifyUserIsTransactionCoordinatorAgent(
+    auth0Id: string,
+  ): Promise<boolean> {
     const agent = await this.getUserByAuth0Id(auth0Id);
-    if (!agent.isRealEstateAgent()) {
+    if (!agent.isTransactionCoordinatorAgent()) {
       this.logger.warn(`User with ID ${auth0Id} is not a real estate agent`);
-      throw new UserIsNotRealEstateAgentException();
+      throw new UserIsNotTransactionCoordinatorAgentException();
     }
     return true;
   }

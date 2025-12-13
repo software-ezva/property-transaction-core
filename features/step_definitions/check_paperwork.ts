@@ -16,7 +16,7 @@ Given(
 
     // Request signature and get updated document with relations
     this.savedDocument = await documentService.requestSign(
-      this.agent.auth0Id,
+      this.transactionCoordinatorAgent.auth0Id,
       this.transaction.transactionId,
       this.savedDocument.documentId,
       {

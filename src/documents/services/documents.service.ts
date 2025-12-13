@@ -130,7 +130,7 @@ export class DocumentsService {
       transactionId,
       auth0Id,
     );
-    await this.userService.verifyUserIsRealEstateAgent(auth0Id);
+    await this.userService.verifyUserIsTransactionCoordinatorAgent(auth0Id);
 
     const documentTemplate =
       await this.documentTemplatesService.getDocumentTemplate(
@@ -232,7 +232,7 @@ export class DocumentsService {
     isSignable: boolean;
     couldBeRequestedForSignature: boolean;
   }> {
-    await this.userService.verifyUserIsRealEstateAgent(auth0Id);
+    await this.userService.verifyUserIsTransactionCoordinatorAgent(auth0Id);
     const document = await this.getDocument(transactionId, auth0Id, documentId);
     const state = this.statusManager.getStateFor(document.status);
     state.checkForEdit(document); // State modifica el documento directamente
@@ -268,7 +268,7 @@ export class DocumentsService {
     transactionId: string,
     documentId: string,
   ): Promise<Document> {
-    await this.userService.verifyUserIsRealEstateAgent(auth0Id);
+    await this.userService.verifyUserIsTransactionCoordinatorAgent(auth0Id);
     const document = await this.getDocument(transactionId, auth0Id, documentId);
 
     const state = this.statusManager.getStateFor(document.status);
@@ -336,7 +336,7 @@ export class DocumentsService {
     documentId: string,
     signatureData: RequestSignDto,
   ): Promise<Document> {
-    await this.userService.verifyUserIsRealEstateAgent(agentId);
+    await this.userService.verifyUserIsTransactionCoordinatorAgent(agentId);
 
     const document = await this.getDocument(transactionId, agentId, documentId);
 
@@ -389,7 +389,7 @@ export class DocumentsService {
     transactionId: string,
     documentId: string,
   ): Promise<Document> {
-    await this.userService.verifyUserIsRealEstateAgent(auth0Id);
+    await this.userService.verifyUserIsTransactionCoordinatorAgent(auth0Id);
     const document = await this.getDocument(transactionId, auth0Id, documentId);
     const state = this.statusManager.getStateFor(document.status);
     state.archive(document);
