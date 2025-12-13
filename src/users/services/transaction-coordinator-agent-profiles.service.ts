@@ -53,7 +53,9 @@ export class TransactionCoordinatorAgentProfilesService {
 
     user.profile = profile;
     await this.userRepository.save(user);
-    this.logger.log(`Assigned agent profile for user: ${auth0Id}`);
+    this.logger.log(
+      `Assigned transaction coordinator agent profile for user: ${auth0Id}`,
+    );
     return profile;
   }
 

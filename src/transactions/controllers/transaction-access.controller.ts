@@ -10,7 +10,7 @@ import { TransactionAccessService } from '../services/transaction-access.service
 import { JoinTransactionWithCodeDto } from '../dto/join-transaction-with-code.dto';
 import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
-@ApiTags('Transactions Access')
+@ApiTags('transactions-access')
 @Controller('transactions')
 @ApiBearerAuth()
 export class TransactionAccessController {

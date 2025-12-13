@@ -9,7 +9,11 @@ import { Transaction } from '../entities/transaction.entity';
 import { Property } from '../../properties/entities/property.entity';
 import { WorkflowAnalyticsService } from '../workflow-analytics.service';
 import { TemplatesService } from '../../templates/services/templates.service';
-import { TransactionType, TransactionStatus } from '../../common/enums';
+import {
+  TransactionType,
+  TransactionStatus,
+  ProfileType,
+} from '../../common/enums';
 import { DuplicateTransactionException } from '../exceptions/duplicate-transaction.exception';
 import { TransactionNotFoundException } from '../exceptions/transaction-not-found.exception';
 import { SupportingProfessionalNotFoundException } from '../exceptions/supporting-professional-not-found.exception';
@@ -30,6 +34,7 @@ import {
 } from '../dto/transaction-people-response.dto';
 import { TransactionAuthorizationService } from './transaction-authorization.service';
 import { AccessCodeGenerator } from '../../users/utils/access-code.generator';
+import { getTransactionWhereClauseByProfileType } from '../utils/transaction-query.utils';
 
 @Injectable()
 export class TransactionsService {
@@ -106,11 +111,19 @@ export class TransactionsService {
 
   async findAll(userId: string): Promise<TransactionWithSummaryInfo[]> {
     const user = await this.userService.getUserByAuth0Id(userId);
-    // get role and build a where clause dynamically
-    const isAgent = user.isTransactionCoordinatorAgent();
-    const whereClause = isAgent
-      ? { transactionCoordinatorAgent: { user: { id: user.id } } }
-      : { client: { user: { id: user.id } } };
+    const profileType = user.getProfileType();
+
+    const whereClause = getTransactionWhereClauseByProfileType(
+      profileType as ProfileType,
+      user.id,
+    );
+
+    if (!whereClause) {
+      this.logger.warn(
+        `User ${userId} has unknown or unsupported profile type for listing transactions: ${profileType}`,
+      );
+      return [];
+    }
 
     const transactions = await this.transactionRepository.find({
       where: whereClause,

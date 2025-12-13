@@ -7,7 +7,7 @@ import { UsersService } from '../../users/services/users.service';
 import {
   TransactionNotFoundException,
   UnauthorizedTransactionAccessException,
-} from '../expections';
+} from '../exceptions';
 import { UserNotFoundException } from '../../users/exceptions';
 
 @Injectable()
@@ -34,7 +34,16 @@ export class TransactionAuthorizationService {
     // Get transaction with related users
     const transaction = await this.transactionRepository.findOne({
       where: { transactionId },
-      relations: ['agent', 'client'],
+      relations: [
+        'transactionCoordinatorAgent',
+        'transactionCoordinatorAgent.user',
+        'client',
+        'client.user',
+        'realEstateAgent',
+        'realEstateAgent.user',
+        'supportingProfessionals',
+        'supportingProfessionals.user',
+      ],
     });
 
     if (!transaction) {
@@ -43,10 +52,20 @@ export class TransactionAuthorizationService {
     }
 
     // Check if user is the agent or client of this transaction
-    const isAgent = transaction.agent?.id === user.id;
-    const isClient = transaction.client?.id === user.id;
+    const isCoordinatorAgent =
+      transaction.transactionCoordinatorAgent?.user?.id === user.id;
+    const isClient = transaction.client?.user?.id === user.id;
+    const isRealEstateAgent = transaction.realEstateAgent?.user?.id === user.id;
+    const isSupportingProfessional = transaction.supportingProfessionals?.some(
+      (sp) => sp.user?.id === user.id,
+    );
 
-    if (!isAgent && !isClient) {
+    if (
+      !isCoordinatorAgent &&
+      !isClient &&
+      !isRealEstateAgent &&
+      !isSupportingProfessional
+    ) {
       this.logger.warn(
         `User ${userAuth0Id} (ID: ${user.id}) does not have access to transaction ${transactionId}`,
       );
@@ -57,9 +76,7 @@ export class TransactionAuthorizationService {
     }
 
     this.logger.log(
-      `User ${userAuth0Id} verified access to transaction ${transactionId} as ${
-        isAgent ? 'agent' : 'client'
-      }`,
+      `User ${userAuth0Id} verified access to transaction ${transactionId}`,
     );
 
     return { transaction, user };
@@ -71,23 +88,30 @@ export class TransactionAuthorizationService {
   ): Promise<boolean> {
     const transaction = await this.transactionRepository.findOne({
       where: { transactionId },
-      relations: ['agent', 'client', 'supportingProfessionals'],
+      relations: [
+        'transactionCoordinatorAgent',
+        'transactionCoordinatorAgent.user',
+        'client',
+        'client.user',
+        'supportingProfessionals',
+        'supportingProfessionals.user',
+      ],
     });
 
     if (!transaction) {
       throw new TransactionNotFoundException(transactionId);
     }
 
-    if (transaction.agent?.id === userId) {
+    if (transaction.transactionCoordinatorAgent?.user?.id === userId) {
       return true;
     }
 
-    if (transaction.client?.id === userId) {
+    if (transaction.client?.user?.id === userId) {
       return true;
     }
 
     const isSupportingProfessional = transaction.supportingProfessionals?.some(
-      (professional) => professional.id === userId,
+      (professional) => professional.user?.id === userId,
     );
 
     if (isSupportingProfessional) {
