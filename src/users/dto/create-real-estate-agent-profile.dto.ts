@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsUUID, Matches } from 'class-validator';
+import { IsString, IsOptional, Matches } from 'class-validator';
 
-export class CreateAgentProfileDto {
+export class CreateRealEstateAgentProfileDto {
   @ApiProperty({ example: 'John Doe', description: 'Name for e-signature' })
   @IsString()
   esign_name: string;
@@ -33,13 +33,4 @@ export class CreateAgentProfileDto {
   @IsString()
   @IsOptional()
   mls_number?: string;
-
-  @ApiProperty({
-    example: 'uuid-of-brokerage',
-    description: 'ID of the brokerage this agent belongs to',
-    required: false,
-  })
-  @IsUUID()
-  @IsOptional()
-  brokerage_id?: string;
 }

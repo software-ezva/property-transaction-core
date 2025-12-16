@@ -25,7 +25,7 @@ export class DocumentTemplatesService {
     file: DocumentFile,
     userId: string,
   ): Promise<{ template: DocumentTemplate; secureUrl: string }> {
-    await this.userService.verifyUserIsRealEstateAgent(userId);
+    await this.userService.verifyUserIsTransactionCoordinatorAgent(userId);
 
     const filePath = await this.storageService.storageTemplateDocument(
       file,
@@ -51,7 +51,7 @@ export class DocumentTemplatesService {
   }
 
   async findAll(userId: string): Promise<DocumentTemplate[]> {
-    await this.userService.verifyUserIsRealEstateAgent(userId);
+    await this.userService.verifyUserIsTransactionCoordinatorAgent(userId);
 
     const templates = await this.documentTemplateRepository.find({
       order: { createdAt: 'DESC' },
@@ -67,7 +67,7 @@ export class DocumentTemplatesService {
     uuid: string,
     userId: string,
   ): Promise<{ template: DocumentTemplate; secureUrl: string }> {
-    await this.userService.verifyUserIsRealEstateAgent(userId);
+    await this.userService.verifyUserIsTransactionCoordinatorAgent(userId);
 
     const template = await this.getDocumentTemplate(uuid);
 
@@ -80,7 +80,7 @@ export class DocumentTemplatesService {
   }
 
   async remove(uuid: string, userId: string): Promise<void> {
-    await this.userService.verifyUserIsRealEstateAgent(userId);
+    await this.userService.verifyUserIsTransactionCoordinatorAgent(userId);
 
     const { template } = await this.findOne(uuid, userId);
 

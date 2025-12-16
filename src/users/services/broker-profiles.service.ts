@@ -10,7 +10,6 @@ import { CreateBrokerProfileDto } from '../dto/create-broker-profile.dto';
 import {
   UserAlreadyHasAProfileException,
   BrokerProfileNotFoundException,
-  InvalidAccessCodeFormatException,
   UserIsNotBrokerException,
   AlreadyAssociatedWithBrokerageException,
 } from '../exceptions';
@@ -21,7 +20,6 @@ import {
   ProfileSummaryDto,
   SupportingProfessionalSummaryDto,
 } from '../dto/brokerage-detail-response.dto';
-import { AccessCodeGenerator } from '../utils/access-code.generator';
 
 @Injectable()
 export class BrokerProfilesService {
@@ -171,10 +169,12 @@ export class BrokerProfilesService {
   private mapBrokerageToDetailDto(
     brokerage: Brokerage,
   ): BrokerageDetailResponseDto {
-    const agents: ProfileSummaryDto[] = brokerage.agents.map((agent) => ({
-      email: agent.user.email,
-      fullName: agent.user.fullName,
-    }));
+    const agents: ProfileSummaryDto[] = brokerage.realEstateAgents.map(
+      (agent) => ({
+        email: agent.user.email,
+        fullName: agent.user.fullName,
+      }),
+    );
 
     const brokers: ProfileSummaryDto[] = brokerage.brokers.map((broker) => ({
       email: broker.user.email,
@@ -209,11 +209,6 @@ export class BrokerProfilesService {
     auth0Id: string,
     accessCode: string,
   ): Promise<BrokerProfile> {
-    // Validate access code format
-    if (!AccessCodeGenerator.isValid(accessCode)) {
-      throw new InvalidAccessCodeFormatException(accessCode);
-    }
-
     const user = await this.userService.getUserByAuth0Id(auth0Id);
     if (!user.isBroker()) {
       this.logger.warn(`User with ID ${auth0Id} is not a broker`);
@@ -230,8 +225,9 @@ export class BrokerProfilesService {
       throw new AlreadyAssociatedWithBrokerageException(user.fullName);
     }
 
-    // Find brokerage by access code
-    const brokerage = await this.brokerageService.findByAccessCode(accessCode);
+    // Validate and get brokerage
+    const brokerage =
+      await this.brokerageService.validateAndGetBrokerageForJoin(accessCode);
 
     return this.assignBrokerToBrokerage(broker, brokerage);
   }

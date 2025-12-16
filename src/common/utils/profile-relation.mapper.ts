@@ -8,7 +8,7 @@ export const PROFILE_BROKERAGE_RELATION_MAP: Partial<
   Record<ProfileType, 'brokers' | 'agents' | 'supportingProfessionals'>
 > = {
   [ProfileType.BROKER]: 'brokers',
-  [ProfileType.REAL_ESTATE_AGENT]: 'agents',
+  [ProfileType.TRANSACTION_COORDINATOR_AGENT]: 'agents',
   [ProfileType.SUPPORTING_PROFESSIONAL]: 'supportingProfessionals',
 };
 

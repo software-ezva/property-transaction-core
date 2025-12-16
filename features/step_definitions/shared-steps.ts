@@ -7,9 +7,10 @@ import { mapToTransactionType } from '../support/transaction-type-mapper';
 import { faker } from '@faker-js/faker';
 import { expect } from 'expect';
 import { ProfessionalType } from '../../src/common/enums';
+import { TransactionCoordinatorAgentProfile } from 'src/users/entities/transaction-coordinator-agent-profile.entity';
 
 export interface SharedTestWorld {
-  agent: User;
+  transactionCoordinatorAgent: User;
   interestedParty: User;
   property: Property;
   transaction: Transaction;
@@ -25,26 +26,33 @@ Given(
   ) {
     const {
       userService,
-      agentProfilesService,
+      transactionCoordinatorAgentProfilesService,
       propertyService,
       transactionService,
     } = getServices();
 
     // Create real estate agent
-    this.agent = await userService.create(
+    this.transactionCoordinatorAgent = await userService.create(
       faker.string.uuid(),
       faker.internet.email(),
       agentName,
       agentName,
     );
 
-    // Create real estate agent profile
-    await agentProfilesService.assignAgentProfile(this.agent.auth0Id, {
-      esign_name: agentName,
-      esign_initials: agentName.charAt(0).toUpperCase(),
-      phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
-      license_number: faker.string.alphanumeric(10),
-    });
+    // Create transaction coordinator agent profile
+    const profile =
+      await transactionCoordinatorAgentProfilesService.assignTransactionCoordinatorAgentProfile(
+        this.transactionCoordinatorAgent.auth0Id,
+        {
+          esign_name: agentName,
+          esign_initials: agentName.charAt(0).toUpperCase(),
+          phone_number:
+            '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
+          license_number: faker.string.alphanumeric(10),
+        },
+      );
+
+    this.transactionCoordinatorAgent.profile = profile;
 
     // Create property
     this.property = await propertyService.create({
@@ -59,7 +67,8 @@ Given(
     this.transaction = await transactionService.createAndSaveTransaction(
       mapToTransactionType(transactionType),
       this.property,
-      this.agent,
+      this.transactionCoordinatorAgent
+        .profile as TransactionCoordinatorAgentProfile,
       null,
       transactionType,
     );
@@ -67,7 +76,8 @@ Given(
     // Verify transaction exists
     const hasTransaction = await transactionService.existsATransaction(
       this.property,
-      this.agent,
+      this.transactionCoordinatorAgent
+        .profile as TransactionCoordinatorAgentProfile,
       null,
       this.transaction.transactionType,
     );
@@ -105,7 +115,7 @@ Given(
 
     // Add interested party to the transaction as supporting professional
     await transactionService.addSupportingProfessionalToTransaction(
-      this.agent.auth0Id,
+      this.transactionCoordinatorAgent.auth0Id,
       this.transaction.transactionId,
       this.interestedParty.id,
     );

@@ -20,9 +20,10 @@ export interface TestWorld extends SharedTestWorld {
 Given(
   `a real estate agent named {string}`,
   async function (this: TestWorld, agentName: string) {
-    const { userService, agentProfilesService } = getServices();
+    const { userService, transactionCoordinatorAgentProfilesService } =
+      getServices();
     // Create real estate agent
-    this.agent = await userService.create(
+    this.transactionCoordinatorAgent = await userService.create(
       faker.string.uuid(),
       faker.internet.email(),
       agentName,
@@ -30,14 +31,20 @@ Given(
     );
 
     // Create real estate agent profile
-    await agentProfilesService.assignAgentProfile(this.agent.auth0Id, {
-      esign_name: agentName,
-      esign_initials: agentName.charAt(0).toUpperCase(),
-      phone_number: '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
-      license_number: faker.string.alphanumeric(10),
-    });
+    await transactionCoordinatorAgentProfilesService.assignTransactionCoordinatorAgentProfile(
+      this.transactionCoordinatorAgent.auth0Id,
+      {
+        esign_name: agentName,
+        esign_initials: agentName.charAt(0).toUpperCase(),
+        phone_number:
+          '+1555' + faker.string.numeric(3) + faker.string.numeric(4),
+        license_number: faker.string.alphanumeric(10),
+      },
+    );
     expect(
-      await userService.verifyUserIsRealEstateAgent(this.agent.auth0Id),
+      await userService.verifyUserIsTransactionCoordinatorAgent(
+        this.transactionCoordinatorAgent.auth0Id,
+      ),
     ).toBe(true);
   },
 );
@@ -102,7 +109,7 @@ When(
     const { documentService } = getServices();
     const { transactionRepository } = getRepositories();
     this.savedDocument = await documentService.addDocumentToTransaction(
-      this.agent.auth0Id,
+      this.transactionCoordinatorAgent.auth0Id,
       this.transaction.transactionId,
       this.documentTemplate.documentTemplateId,
     );
@@ -142,7 +149,7 @@ Given(
         DocumentCategory.MISCELLANEOUS,
       );
     this.savedDocument = await documentService.addDocumentToTransaction(
-      this.agent.auth0Id,
+      this.transactionCoordinatorAgent.auth0Id,
       this.transaction.transactionId,
       this.documentTemplate.documentTemplateId,
       status as DocumentStatus,
@@ -156,7 +163,7 @@ When(
   async function (this: TestWorld) {
     const { documentService } = getServices();
     const { document } = await documentService.checkDocumentForEdit(
-      this.agent.auth0Id,
+      this.transactionCoordinatorAgent.auth0Id,
       this.savedDocument.documentId,
       this.transaction.transactionId,
     );
@@ -192,7 +199,7 @@ When(
     const { document } = await documentService.edit(
       this.transaction.transactionId,
       this.savedDocument.documentId,
-      this.agent.auth0Id,
+      this.transactionCoordinatorAgent.auth0Id,
       mockFile,
       true,
     );
@@ -218,7 +225,7 @@ When(
   async function (this: TestWorld) {
     const { documentService } = getServices();
     this.savedDocument = await documentService.requestSign(
-      this.agent.auth0Id,
+      this.transactionCoordinatorAgent.auth0Id,
       this.transaction.transactionId,
       this.savedDocument.documentId,
       {
@@ -249,7 +256,7 @@ When(
 
     // First, correct the document status (from Rejected to In Edition)
     this.savedDocument = await documentService.correctDocument(
-      this.agent.auth0Id,
+      this.transactionCoordinatorAgent.auth0Id,
       this.transaction.transactionId,
       this.savedDocument.documentId,
     );
@@ -265,7 +272,7 @@ When(
     const { document } = await documentService.edit(
       this.transaction.transactionId,
       this.savedDocument.documentId,
-      this.agent.auth0Id,
+      this.transactionCoordinatorAgent.auth0Id,
       mockFile,
       false,
     );

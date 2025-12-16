@@ -26,7 +26,7 @@ import { WorkflowResponseDto } from '../dto/workflow-response.dto';
 import {
   TransactionNotFoundException,
   UnauthorizedTransactionAccessException,
-} from '../expections';
+} from '../exceptions';
 import { AuthenticatedRequest } from '../../common/interfaces';
 
 @Controller('transactions')

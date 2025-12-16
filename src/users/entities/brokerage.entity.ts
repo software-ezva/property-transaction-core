@@ -82,7 +82,7 @@ export class Brokerage {
   accessCode: string;
 
   @OneToMany(() => RealEstateAgentProfile, (agent) => agent.brokerage)
-  agents: RealEstateAgentProfile[];
+  realEstateAgents: RealEstateAgentProfile[];
 
   @OneToMany(() => BrokerProfile, (broker) => broker.brokerage)
   brokers: BrokerProfile[];

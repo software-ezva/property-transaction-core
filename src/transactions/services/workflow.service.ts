@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { WorkflowResponseDto } from '../dto/workflow-response.dto';
 import { TransactionAuthorizationService } from './transaction-authorization.service';
 import { Workflow } from '../entities/workflow.entity';
-import { WorkflowNotFoundException } from '../expections';
+import { WorkflowNotFoundException } from '../exceptions';
 
 @Injectable()
 export class WorkflowService {
@@ -25,17 +25,7 @@ export class WorkflowService {
       transactionId,
       userAuth0Id,
     );
-
-    // Find workflow directly by transaction ID
-    const workflow = await this.workflowRepository.findOne({
-      where: { transaction: { transactionId: transactionId } },
-      relations: ['checklists', 'checklists.items'],
-    });
-
-    if (!workflow) {
-      this.logger.warn(`No workflow found for transaction ${transactionId}`);
-      throw new WorkflowNotFoundException(transactionId);
-    }
+    const workflow = await this.getWorkflowEntityByTransactionId(transactionId);
 
     const result: WorkflowResponseDto = {
       id: workflow.id,
@@ -52,6 +42,14 @@ export class WorkflowService {
               order: item.order,
               status: item.status,
               expectClosingDate: item.expectClosingDate,
+              updates:
+                item.updates?.map((update) => ({
+                  id: update.id,
+                  content: update.content,
+                  createdAt: update.createdAt,
+                  createdBy: update.createdBy,
+                  createdByName: update.createdByName,
+                })) || [],
             })) || [],
         })) || [],
     };
@@ -60,5 +58,21 @@ export class WorkflowService {
       `Workflow for transaction ${transactionId} retrieved successfully by user ${userAuth0Id}`,
     );
     return result;
+  }
+
+  async getWorkflowEntityByTransactionId(
+    transactionId: string,
+  ): Promise<Workflow> {
+    // Find workflow directly by transaction ID
+    const workflow = await this.workflowRepository.findOne({
+      where: { transaction: { transactionId: transactionId } },
+      relations: ['checklists', 'checklists.items', 'checklists.items.updates'],
+    });
+
+    if (!workflow) {
+      this.logger.warn(`No workflow found for transaction ${transactionId}`);
+      throw new WorkflowNotFoundException(transactionId);
+    }
+    return workflow;
   }
 }

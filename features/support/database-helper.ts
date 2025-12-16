@@ -3,6 +3,7 @@ import { Transaction } from '../../src/transactions/entities/transaction.entity'
 import { Property } from '../../src/properties/entities/property.entity';
 import { User } from '../../src/users/entities/user.entity';
 import { Profile } from '../../src/users/entities/profile.entity';
+import { TransactionCoordinatorAgentProfile } from '../../src/users/entities/transaction-coordinator-agent-profile.entity';
 import { RealEstateAgentProfile } from '../../src/users/entities/real-estate-agent-profile.entity';
 import { Brokerage } from '../../src/users/entities/brokerage.entity';
 import { TransactionsService } from '../../src/transactions/services/transactions.service';
@@ -19,7 +20,8 @@ import { TransactionAuthorizationService } from '../../src/transactions/services
 import { UsersService } from '../../src/users/services/users.service';
 import { ClientProfile } from '../../src/users/entities/client-profile.entity';
 import { ClientProfilesService } from '../../src/users/services/client-profiles.service';
-import { AgentProfilesService } from '../../src/users/services/agent-profiles.service';
+import { TransactionCoordinatorAgentProfilesService } from '../../src/users/services/transaction-coordinator-agent-profiles.service';
+import { RealEstateAgentProfilesService } from '../../src/users/services/real-estate-agent-profiles.service';
 import { SupportingProfessionalsService } from '../../src/users/services/supporting-professionals.service';
 import { PropertiesService } from '../../src/properties/properties.service';
 import { WorkflowAnalyticsService } from '../../src/transactions/workflow-analytics.service';
@@ -36,6 +38,7 @@ import { SignatureService } from '../../src/documents/services/signature.service
 import { BrokerageService } from '../../src/users/services/brokerage.service';
 import { BrokerProfilesService } from '../../src/users/services/broker-profiles.service';
 import { BrokerProfile } from '../../src/users/entities/broker-profile.entity';
+import { WorkflowService } from '../../src/transactions/services/workflow.service';
 
 // Lazy initialization functions
 export function getRepositories() {
@@ -44,6 +47,9 @@ export function getRepositories() {
     userRepository: dataSource.getRepository(User),
     propertyRepository: dataSource.getRepository(Property),
     profileRepository: dataSource.getRepository(Profile),
+    transactionCoordinatorAgentProfileRepository: dataSource.getRepository(
+      TransactionCoordinatorAgentProfile,
+    ),
     realEstateAgentProfileRepository: dataSource.getRepository(
       RealEstateAgentProfile,
     ),
@@ -75,14 +81,12 @@ export function getServices() {
     userService,
   );
 
-  // Create brokerageService (no circular dependency anymore)
   const brokerageService = new BrokerageService(
     repositories.brokerageRepository,
     repositories.brokerProfileRepository,
     userService,
   );
 
-  // Create brokerProfilesService (with brokerageService)
   const brokerProfilesService = new BrokerProfilesService(
     repositories.userRepository,
     repositories.brokerProfileRepository,
@@ -95,7 +99,13 @@ export function getServices() {
     repositories.clientProfileRepository,
     userService,
   );
-  const agentProfilesService = new AgentProfilesService(
+  const transactionCoordinatorAgentProfilesService =
+    new TransactionCoordinatorAgentProfilesService(
+      repositories.userRepository,
+      repositories.transactionCoordinatorAgentProfileRepository,
+      userService,
+    );
+  const realEstateAgentProfilesService = new RealEstateAgentProfilesService(
     repositories.userRepository,
     repositories.realEstateAgentProfileRepository,
     userService,
@@ -132,13 +142,21 @@ export function getServices() {
     dataSource,
   );
 
+  const workflowService = new WorkflowService(
+    repositories.workflowRepository,
+    transactionAuthorizationService,
+  );
+
   const checklistService = new ChecklistService(
     repositories.checklistRepository,
+    transactionAuthorizationService,
+    workflowService,
   );
 
   const itemService = new ItemService(
     repositories.itemRepository,
     transactionAuthorizationService,
+    checklistService,
   );
 
   // Create a complete mock StorageService that implements all methods
@@ -265,7 +283,8 @@ export function getServices() {
     userService,
     clientProfilesService,
     brokerProfilesService,
-    agentProfilesService,
+    transactionCoordinatorAgentProfilesService,
+    realEstateAgentProfilesService,
     supportingProfessionalProfilesService,
     propertyService,
     signatureService,

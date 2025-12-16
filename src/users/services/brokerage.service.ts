@@ -11,6 +11,7 @@ import {
   UserIsNotBrokerException,
   BrokerageWithAccessCodeNotFoundException,
   ProfileNotFoundException,
+  InvalidAccessCodeFormatException,
 } from '../exceptions';
 
 @Injectable()
@@ -158,6 +159,16 @@ export class BrokerageService {
     }
 
     return brokerage;
+  }
+
+  async validateAndGetBrokerageForJoin(accessCode: string): Promise<Brokerage> {
+    // Validate access code format
+    if (!AccessCodeGenerator.isValid(accessCode)) {
+      throw new InvalidAccessCodeFormatException(accessCode);
+    }
+
+    // Find brokerage by access code (throws if not found)
+    return this.findByAccessCode(accessCode);
   }
 
   async regenerateAccessCode(brokerageId: string): Promise<Brokerage> {

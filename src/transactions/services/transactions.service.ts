@@ -6,23 +6,35 @@ import { UpdateTransactionDto } from '../dto/update-transaction.dto';
 import { TransactionWithSummaryInfo } from '../interfaces/transaction-with-summary-info.interface';
 import { TransactionWithDetailedInfo } from '../interfaces/transaction-with-detailed-info.interface';
 import { Transaction } from '../entities/transaction.entity';
-import { User } from '../../users/entities/user.entity';
 import { Property } from '../../properties/entities/property.entity';
 import { WorkflowAnalyticsService } from '../workflow-analytics.service';
 import { TemplatesService } from '../../templates/services/templates.service';
-import { TransactionType, TransactionStatus } from '../../common/enums';
 import {
-  WorkflowTemplateDoesNotExistException,
-  DuplicateTransactionException,
-  TransactionNotFoundException,
-  SupportingProfessionalNotFoundException,
-  SupportingProfessionalAlreadyAssignedException,
-} from '../expections';
-import { UserIsNotRealEstateAgentException } from '../../users/exceptions';
+  TransactionType,
+  TransactionStatus,
+  ProfileType,
+} from '../../common/enums';
+import { DuplicateTransactionException } from '../exceptions/duplicate-transaction.exception';
+import { TransactionNotFoundException } from '../exceptions/transaction-not-found.exception';
+import { SupportingProfessionalNotFoundException } from '../exceptions/supporting-professional-not-found.exception';
+import { SupportingProfessionalAlreadyAssignedException } from '../exceptions/supporting-professional-already-assigned.exception';
+import { WorkflowTemplateDoesNotExistException } from '../exceptions/workflow-template-does-not-exist.exception';
+import { UserIsNotTransactionCoordinatorAgentException } from '../../users/exceptions';
 import { UsersService } from '../../users/services/users.service';
 import { PropertiesService } from '../../properties/properties.service';
 import { WorkflowTemplate } from 'src/templates/entities/workflow-template.entity';
+import { TransactionCoordinatorAgentProfile } from '../../users/entities/transaction-coordinator-agent-profile.entity';
+import { ClientProfile } from '../../users/entities/client-profile.entity';
+import { SupportingProfessionalProfile } from '../../users/entities/supporting-professional-profile.entity';
+import { Profile } from '../../users/entities/profile.entity';
+import {
+  TransactionPeopleResponseDto,
+  PersonDto,
+  SupportingProfessionalDto,
+} from '../dto/transaction-people-response.dto';
 import { TransactionAuthorizationService } from './transaction-authorization.service';
+import { AccessCodeGenerator } from '../../users/utils/access-code.generator';
+import { getTransactionWhereClauseByProfileType } from '../utils/transaction-query.utils';
 
 @Injectable()
 export class TransactionsService {
@@ -44,28 +56,25 @@ export class TransactionsService {
     createTransactionDto: CreateTransactionDto,
     agentId: string,
   ): Promise<Transaction> {
-    const { propertyId, clientId, workflowTemplateId, additionalNotes } =
+    const { propertyId, workflowTemplateId, additionalNotes } =
       createTransactionDto;
     try {
-      // Fetch agent, client(optional) and property
+      // Fetch agent and property
       const agent = await this.userService.getUserByAuth0Id(agentId);
-      if (!agent.isRealEstateAgent()) {
+      if (!agent.isTransactionCoordinatorAgent()) {
         this.logger.warn(`User with ID ${agentId} is not a real estate agent`);
-        throw new UserIsNotRealEstateAgentException();
+        throw new UserIsNotTransactionCoordinatorAgentException();
       }
       const property = await this.propertyService.findOne(propertyId);
       const workflowTemplate =
         await this.templatesService.findOne(workflowTemplateId);
-      const client = clientId
-        ? await this.userService.getUserById(clientId)
-        : null;
 
       // Check for duplicate transaction
       if (
         await this.existsATransaction(
           property,
-          agent,
-          client,
+          agent.profile as TransactionCoordinatorAgentProfile,
+          null,
           workflowTemplate.transactionType,
         )
       ) {
@@ -79,8 +88,8 @@ export class TransactionsService {
       const transaction = await this.createAndSaveTransaction(
         workflowTemplate.transactionType,
         property,
-        agent,
-        client,
+        agent.profile as TransactionCoordinatorAgentProfile,
+        null,
         additionalNotes,
       );
 
@@ -102,16 +111,28 @@ export class TransactionsService {
 
   async findAll(userId: string): Promise<TransactionWithSummaryInfo[]> {
     const user = await this.userService.getUserByAuth0Id(userId);
-    // get role and build a where clause dynamically
-    const userRole = user.isRealEstateAgent() ? 'agent' : 'client';
-    const whereClause = { [userRole]: { id: user.id } };
+    const profileType = user.getProfileType();
+
+    const whereClause = getTransactionWhereClauseByProfileType(
+      profileType as ProfileType,
+      user.id,
+    );
+
+    if (!whereClause) {
+      this.logger.warn(
+        `User ${userId} has unknown or unsupported profile type for listing transactions: ${profileType}`,
+      );
+      return [];
+    }
 
     const transactions = await this.transactionRepository.find({
       where: whereClause,
       relations: [
         'property',
-        'agent',
+        'transactionCoordinatorAgent',
+        'transactionCoordinatorAgent.user',
         'client',
+        'client.user',
         'workflow',
         'workflow.checklists',
         'workflow.checklists.items',
@@ -120,14 +141,14 @@ export class TransactionsService {
     });
 
     this.logger.log(
-      `Retrieved ${transactions.length} transactions for ${userRole} ${userId}`,
+      `Retrieved ${transactions.length} transactions for user ${userId}`,
     );
 
     return transactions.map((transaction) => ({
       transaction,
       propertyAddress: transaction.property.address,
       propertyValue: Number(transaction.property.price),
-      clientName: transaction.client ? transaction.client.fullName : null,
+      clientName: transaction.client ? transaction.client.user.fullName : null,
       totalWorkflowItems:
         this.workflowAnalyticsService.calculateTotalWorkflowItems(transaction),
       completedWorkflowItems:
@@ -144,8 +165,8 @@ export class TransactionsService {
       where: { transactionId: transactionId },
       relations: [
         'property',
-        'agent',
-        'client',
+        'transactionCoordinatorAgent',
+        'transactionCoordinatorAgent.user',
         'workflow',
         'workflow.checklists',
         'workflow.checklists.items',
@@ -176,10 +197,10 @@ export class TransactionsService {
       where: { transactionId },
       relations: [
         'property',
-        'agent',
-        'agent.profile',
+        'transactionCoordinatorAgent',
+        'transactionCoordinatorAgent.user',
         'client',
-        'client.profile',
+        'client.user',
         'workflow',
         'workflow.checklists',
         'workflow.checklists.items',
@@ -199,9 +220,9 @@ export class TransactionsService {
       propertySize: transaction.property?.size || null,
       propertyBedrooms: transaction.property?.bedrooms || null,
       propertyBathrooms: transaction.property?.bathrooms || null,
-      clientName: transaction.client?.fullName || null,
-      clientEmail: transaction.client?.email || null,
-      clientPhoneNumber: transaction.client?.profile?.phoneNumber || null,
+      clientName: transaction.client?.user?.fullName || null,
+      clientEmail: transaction.client?.user?.email || null,
+      clientPhoneNumber: transaction.client?.phoneNumber || null,
       totalWorkflowItems:
         this.workflowAnalyticsService.calculateTotalWorkflowItems(transaction),
       completedWorkflowItems:
@@ -218,6 +239,50 @@ export class TransactionsService {
     return result;
   }
 
+  async getTransactionPeople(
+    transactionId: string,
+  ): Promise<TransactionPeopleResponseDto> {
+    const transaction = await this.transactionRepository.findOne({
+      where: { transactionId },
+      relations: [
+        'client',
+        'client.user',
+        'realEstateAgent',
+        'realEstateAgent.user',
+        'supportingProfessionals',
+        'supportingProfessionals.user',
+      ],
+    });
+
+    if (!transaction) {
+      throw new TransactionNotFoundException(transactionId);
+    }
+
+    const mapPerson = (
+      profile: Profile | null | undefined,
+    ): PersonDto | null => {
+      if (!profile || !profile.user) return null;
+      return {
+        id: profile.user.id,
+        fullName: profile.user.fullName,
+        email: profile.user.email,
+        phoneNumber: profile.phoneNumber,
+      };
+    };
+
+    return {
+      accessCode: transaction.accessCode,
+      client: mapPerson(transaction.client),
+      realEstateAgent: mapPerson(transaction.realEstateAgent),
+      supportingProfessionals: transaction.supportingProfessionals
+        .map((sp) => {
+          const person = mapPerson(sp);
+          return person ? { ...person, professionOf: sp.professionalOf } : null;
+        })
+        .filter((sp) => sp !== null) as SupportingProfessionalDto[],
+    };
+  }
+
   async update(
     id: string,
     updateTransactionDto: UpdateTransactionDto,
@@ -226,27 +291,6 @@ export class TransactionsService {
 
     try {
       const transaction = await this.findOne(id);
-
-      // Handle clientId update separately as it's a relation
-      if (updateTransactionDto.clientId !== undefined) {
-        try {
-          const client = await this.userService.getUserById(
-            updateTransactionDto.clientId,
-          );
-          transaction.client = client;
-          this.logger.log(
-            `Client assigned to transaction ${id}: ${updateTransactionDto.clientId}`,
-          );
-        } catch (error) {
-          this.logger.error(
-            `Failed to assign client ${updateTransactionDto.clientId} to transaction ${id}`,
-            error,
-          );
-          throw new Error(
-            `Client with ID '${updateTransactionDto.clientId}' does not exist in the system. Please verify the client ID is correct and the user is registered.`,
-          );
-        }
-      }
 
       // Update other simple fields
       if (updateTransactionDto.status !== undefined) {
@@ -352,7 +396,7 @@ export class TransactionsService {
         error instanceof Error ? error.stack : String(error),
       );
       if (
-        error instanceof UserIsNotRealEstateAgentException ||
+        error instanceof UserIsNotTransactionCoordinatorAgentException ||
         error instanceof WorkflowTemplateDoesNotExistException
       ) {
         throw error;
@@ -363,20 +407,20 @@ export class TransactionsService {
 
   async existsATransaction(
     property: Property,
-    agent: User,
-    client: User | null,
+    agent: TransactionCoordinatorAgentProfile,
+    client: ClientProfile | null,
     transactionType: TransactionType,
   ): Promise<boolean> {
     const whereCondition = {
       property: { id: property.id },
-      agent: { id: agent.id },
+      transactionCoordinatorAgent: { id: agent.id },
       transactionType,
       ...(client ? { client: { id: client.id } } : { client: IsNull() }),
     };
 
     const existingTransaction = await this.transactionRepository.findOne({
       where: whereCondition,
-      relations: ['property', 'agent', 'client'],
+      relations: ['property', 'transactionCoordinatorAgent', 'client'],
     });
     return !!existingTransaction;
   }
@@ -384,20 +428,41 @@ export class TransactionsService {
   async createAndSaveTransaction(
     transactionType: TransactionType,
     property: Property,
-    agent: User,
-    client: User | null,
+    agent: TransactionCoordinatorAgentProfile,
+    client: ClientProfile | null,
     additionalNotes?: string,
   ): Promise<Transaction> {
+    const accessCode = await this.generateUniqueAccessCode();
     const newTransaction = this.transactionRepository.create({
       transactionType,
       property,
-      agent,
+      transactionCoordinatorAgent: agent,
       status: this.CREATION_STATUS,
       additionalNotes,
       client: client ?? undefined,
+      accessCode,
     });
 
     return await this.transactionRepository.save(newTransaction);
+  }
+
+  private async generateUniqueAccessCode(): Promise<string> {
+    let isUnique = false;
+    let accessCode = '';
+
+    while (!isUnique) {
+      accessCode = AccessCodeGenerator.generate();
+
+      const existingTransaction = await this.transactionRepository.findOne({
+        where: { accessCode },
+      });
+
+      if (!existingTransaction) {
+        isUnique = true;
+      }
+    }
+
+    return accessCode;
   }
 
   async addSupportingProfessionalToTransaction(
@@ -412,15 +477,18 @@ export class TransactionsService {
     );
 
     // Get the professional user
-    const professional = await this.userService.getUserById(professionalId);
+    const professionalUser = await this.userService.getUserById(professionalId);
 
     // Verify that the user is actually a supporting professional
-    if (!professional.isSupportingProfessional()) {
+    if (!professionalUser.isSupportingProfessional()) {
       this.logger.warn(
         `User with ID ${professionalId} is not a supporting professional`,
       );
       throw new SupportingProfessionalNotFoundException(professionalId);
     }
+
+    const professionalProfile =
+      professionalUser.profile as SupportingProfessionalProfile;
 
     // Get transaction WITH current supporting professionals
     const transaction = await this.transactionRepository.findOne({
@@ -433,7 +501,7 @@ export class TransactionsService {
     }
 
     const isAlreadyAssigned = transaction.supportingProfessionals.some(
-      (sp) => sp.id === professionalId,
+      (sp) => sp.id === professionalProfile.id,
     );
 
     if (isAlreadyAssigned) {
@@ -444,7 +512,7 @@ export class TransactionsService {
     }
 
     // Add the professional to the transaction
-    transaction.supportingProfessionals.push(professional);
+    transaction.supportingProfessionals.push(professionalProfile);
     await this.transactionRepository.save(transaction);
 
     this.logger.log(
@@ -455,7 +523,7 @@ export class TransactionsService {
   async getSupportingProfessionalsForTransaction(
     agentAuth0Id: string,
     transactionId: string,
-  ): Promise<User[]> {
+  ): Promise<SupportingProfessionalProfile[]> {
     // Verify that the agent can access this transaction
     await this.transactionAuthorizationService.verifyUserCanAccessTransaction(
       transactionId,
@@ -464,7 +532,7 @@ export class TransactionsService {
 
     const transaction = await this.transactionRepository.findOne({
       where: { transactionId },
-      relations: ['supportingProfessionals', 'supportingProfessionals.profile'],
+      relations: ['supportingProfessionals', 'supportingProfessionals.user'],
     });
 
     if (!transaction) {

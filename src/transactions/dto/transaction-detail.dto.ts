@@ -98,26 +98,4 @@ export class TransactionDetailDto {
     nullable: true,
   })
   propertyBathrooms: number | null;
-
-  // Client details
-  @ApiProperty({
-    description: 'Name of the client',
-    example: 'John Doe',
-    nullable: true,
-  })
-  clientName: string | null;
-
-  @ApiProperty({
-    description: 'Email of the client',
-    example: 'john.doe@email.com',
-    nullable: true,
-  })
-  clientEmail: string | null;
-
-  @ApiProperty({
-    description: 'Phone number of the client',
-    example: '+15551234567',
-    nullable: true,
-  })
-  clientPhoneNumber: string | null;
 }

@@ -1,5 +1,8 @@
 import {
   Controller,
+  Get,
+  Post,
+  Query,
   Patch,
   Param,
   Body,
@@ -25,11 +28,15 @@ import {
 } from '@nestjs/swagger';
 import { ItemService } from '../services/item.service';
 import { UpdateItemDto } from '../dto/update-item.dto';
+import { CreateItemDto } from '../dto/create-item.dto';
 import { UpdateItemResponseDto } from '../dto/update-item-response.dto';
+import { GetExpiringItemsDto } from '../dto/get-expiring-items.dto';
+import { WorkflowItemDto } from '../dto/workflow-response.dto';
+import { ExpiringItemResponseDto } from '../dto/expiring-item-response.dto';
 import {
   ItemNotFoundException,
   UnauthorizedTransactionAccessException,
-} from '../expections';
+} from '../exceptions';
 import {
   InvalidDateFormatException,
   PastDateNotAllowedException,
@@ -43,6 +50,90 @@ export class ItemsController {
   private readonly logger = new Logger(ItemsController.name);
 
   constructor(private readonly itemService: ItemService) {}
+
+  @Get('items/expiring')
+  @ApiOperation({
+    summary: 'Get expiring items',
+    description:
+      'Retrieves a list of items that are expected to close within the specified number of days (default 7) for the authenticated agent.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of expiring items retrieved successfully',
+    type: [ExpiringItemResponseDto],
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Authentication required or invalid JWT token',
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error during retrieval',
+  })
+  async getExpiringItems(
+    @Query() query: GetExpiringItemsDto,
+    @Request() req: AuthenticatedRequest,
+  ): Promise<ExpiringItemResponseDto[]> {
+    try {
+      const userAuth0Id = req.user.sub;
+      const items = await this.itemService.getExpiringItems(
+        userAuth0Id,
+        query.days ?? 7,
+      );
+
+      return items.map((item) => ({
+        id: item.id,
+        transactionId: item.checklist?.workflow?.transaction?.transactionId,
+        description: item.description,
+        order: item.order,
+        status: item.status,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        expectClosingDate: item.expectClosingDate,
+      }));
+    } catch (error) {
+      this.logger.error(
+        `Failed to get expiring items for user ${req.user.sub}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new HttpException(
+        'Internal server error during retrieval',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+  @Post(':transactionId/workflow/checklists/:checklistId/items')
+  @ApiOperation({ summary: 'Add an item to a checklist' })
+  @ApiParam({
+    name: 'transactionId',
+    description: 'Transaction ID',
+    type: 'string',
+  })
+  @ApiParam({
+    name: 'checklistId',
+    description: 'Checklist ID',
+    type: 'string',
+  })
+  @ApiBody({ type: CreateItemDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Item added successfully',
+    type: WorkflowItemDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'User does not belong to transaction' })
+  @ApiNotFoundResponse({ description: 'Transaction or checklist not found' })
+  async addItem(
+    @Param('transactionId') transactionId: string,
+    @Param('checklistId') checklistId: string,
+    @Body() createItemDto: CreateItemDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.itemService.createItem(
+      transactionId,
+      checklistId,
+      createItemDto,
+      req.user.sub,
+    );
+  }
 
   @Patch(':transactionId/workflow/items/:itemId')
   @ApiOperation({

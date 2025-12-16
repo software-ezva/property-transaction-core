@@ -32,13 +32,14 @@ import { UpdateTransactionDto } from '../dto/update-transaction.dto';
 import { TransactionSummaryDto } from '../dto/transaction-summary.dto';
 import { TransactionDetailDto } from '../dto/transaction-detail.dto';
 import { TransactionWithSummaryInfo } from '../interfaces/transaction-with-summary-info.interface';
+import { TransactionPeopleResponseDto } from '../dto/transaction-people-response.dto';
 import { TransactionWithDetailedInfo } from '../interfaces/transaction-with-detailed-info.interface';
 import { AuthenticatedRequest } from '../../common/interfaces';
 import {
   InvalidTransactionDataException,
   DuplicateTransactionException,
   TransactionNotFoundException,
-} from '../expections';
+} from '../exceptions';
 import { PropertyNotFoundException } from '../../common/exceptions';
 import { UserNotFoundException } from '../../users/exceptions';
 import { CreateTransactionResponseDto } from '../dto/create-transaction-response.dto';
@@ -53,6 +54,18 @@ export class TransactionsController {
     private readonly templatesService: TemplatesService,
     private readonly usersService: UsersService,
   ) {}
+
+  @Get(':transactionId/people')
+  @ApiOperation({ summary: 'Get people involved in the transaction' })
+  @ApiResponse({
+    status: 200,
+    description: 'Return the people involved in the transaction',
+    type: TransactionPeopleResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
+  async getTransactionPeople(@Param('transactionId') id: string) {
+    return this.transactionsService.getTransactionPeople(id);
+  }
 
   @Post()
   @ApiOperation({
@@ -259,9 +272,6 @@ export class TransactionsController {
         propertySize: result.propertySize ?? null,
         propertyBedrooms: result.propertyBedrooms ?? null,
         propertyBathrooms: result.propertyBathrooms ?? null,
-        clientName: result.clientName ?? null,
-        clientEmail: result.clientEmail ?? null,
-        clientPhoneNumber: result.clientPhoneNumber ?? null,
       };
     } catch (error) {
       this.logger.error(
